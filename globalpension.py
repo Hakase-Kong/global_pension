@@ -4,26 +4,46 @@ import requests
 import streamlit as st
 from openai import OpenAI
 
-# =====================================================
+# ==================================================
 
-# CONFIG
+# PAGE CONFIG
 
-# =====================================================
+# ==================================================
 
 st.set_page_config(
 page_title="Global Pension Radar",
 layout="wide"
 )
 
+# ==================================================
+
+# ENV
+
+# ==================================================
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 NAVER_CLIENT_ID = os.getenv("NAVER_CLIENT_ID")
 NAVER_CLIENT_SECRET = os.getenv("NAVER_CLIENT_SECRET")
 
-if not OPENAI_API_KEY:
-st.error("OPENAI_API_KEY not found")
-st.stop()
+# ==================================================
 
+# OPENAI
+
+# ==================================================
+
+client = None
+
+try:
+if OPENAI_API_KEY:
 client = OpenAI(api_key=OPENAI_API_KEY)
+except Exception:
+client = None
+
+# ==================================================
+
+# CONSTANTS
+
+# ==================================================
 
 KEYWORDS = [
 "CalPERS",
@@ -35,20 +55,25 @@ KEYWORDS = [
 "Private Credit",
 "Infrastructure",
 "Private Equity",
-"Co-investment",
 "Secondaries"
 ]
 
-# =====================================================
+# ==================================================
 
 # NAVER NEWS
 
-# =====================================================
+# ==================================================
 
 @st.cache_data(ttl=3600)
 def search_news(query):
 
 ```
+if not NAVER_CLIENT_ID:
+    return []
+
+if not NAVER_CLIENT_SECRET:
+    return []
+
 url = "https://openapi.naver.com/v1/search/news.json"
 
 headers = {
@@ -68,12 +93,14 @@ try:
         url,
         headers=headers,
         params=params,
-        timeout=15
+        timeout=20
     )
 
     response.raise_for_status()
 
-    return response.json().get("items", [])
+    data = response.json()
+
+    return data.get("items", [])
 
 except Exception:
     return []
@@ -101,21 +128,24 @@ for keyword in KEYWORDS:
 return articles
 ```
 
-# =====================================================
+# ==================================================
 
-# GPT ANALYSIS
+# GPT
 
-# =====================================================
+# ==================================================
 
 def analyze_articles(articles):
 
 ```
+if not client:
+    return None
+
 if not articles:
     return None
 
-sample = articles[:60]
+sample = articles[:50]
 
-article_text = "\n".join(
+text = "\n".join(
     [
         f"- {x['title']} | {x['description']}"
         for x in sample
@@ -133,31 +163,19 @@ Return ONLY valid JSON.
 
 {{
 "signals": {{
-"Private Equity": "",
-"Private Credit": "",
-"Infrastructure": "",
-"Real Estate": "",
-"Secondaries": ""
+"Private Equity":"",
+"Private Credit":"",
+"Infrastructure":"",
+"Real Estate":"",
+"Secondaries":""
 }},
-"brief": "",
-"risk_alerts": [],
-"asset_issues": [
-{{
-"asset": "",
-"risk_level": "",
-"issues": []
-}}
-],
-"rebalancing": [
-{{
-"institution": "",
-"signal": "",
-"reason": ""
-}}
-]
+"brief":"",
+"risk_alerts":[],
+"asset_issues":[],
+"rebalancing":[]
 }}
 
-Signal options:
+Signal values:
 
 Increase
 Selective
@@ -168,7 +186,7 @@ Income Shift
 
 News:
 
-{article_text}
+{text}
 """
 
 ```
@@ -181,56 +199,56 @@ try:
                 "role": "user",
                 "content": prompt
             }
-        ],
-        response_format={
-            "type": "json_object"
-        }
+        ]
     )
 
-    return json.loads(
-        response.choices[0].message.content
-    )
+    content = response.choices[0].message.content
+
+    start = content.find("{")
+    end = content.rfind("}")
+
+    if start >= 0 and end >= 0:
+        content = content[start:end+1]
+
+    return json.loads(content)
 
 except Exception as e:
 
     st.error(f"OpenAI Error: {e}")
+
     return None
 ```
 
-# =====================================================
+# ==================================================
 
-# UI HEADER
+# HEADER
 
-# =====================================================
+# ==================================================
 
 st.title("🌍 Global Pension Radar")
 
 st.caption(
-"AI 기반 해외 연기금 대체투자 리밸런싱 시그널 분석"
+"AI 기반 해외 연기금 대체투자 시그널 분석"
 )
 
-# =====================================================
+# ==================================================
 
 # SIDEBAR
 
-# =====================================================
+# ==================================================
 
-st.sidebar.title("Settings")
-
-st.sidebar.markdown(
-"Global Pension Intelligence Dashboard"
-)
+st.sidebar.header("Settings")
 
 run = st.sidebar.button(
 "🚀 분석 실행",
 use_container_width=True
 )
 
-# =====================================================
+# ==================================================
 
 # MAIN
 
-# =====================================================
+# ==================================================
 
 if run:
 
@@ -240,226 +258,144 @@ with st.spinner("뉴스 수집 중..."):
     articles = collect_news()
 
 st.success(
-    f"{len(articles)}개 기사 수집 완료"
+    f"{len(articles)}건 기사 수집"
 )
 
-with st.spinner("AI 분석 중..."):
+result = None
 
-    result = analyze_articles(articles)
+if client:
 
-if not result:
-    st.stop()
+    with st.spinner("AI 분석 중..."):
 
-# =================================================
-# EXECUTIVE RADAR
-# =================================================
+        result = analyze_articles(
+            articles
+        )
+
+# ==============================================
+# EXECUTIVE
+# ==============================================
 
 st.header("📊 Executive Radar")
 
-signals = result.get(
-    "signals",
-    {}
-)
-
 cols = st.columns(5)
 
-assets = [
-    "Private Equity",
-    "Private Credit",
-    "Infrastructure",
-    "Real Estate",
-    "Secondaries"
-]
+default_signals = {
+    "Private Equity": "-",
+    "Private Credit": "-",
+    "Infrastructure": "-",
+    "Real Estate": "-",
+    "Secondaries": "-"
+}
+
+if result:
+    signals = result.get(
+        "signals",
+        default_signals
+    )
+else:
+    signals = default_signals
+
+assets = list(signals.keys())
 
 for idx, asset in enumerate(assets):
 
     cols[idx].metric(
         asset,
-        signals.get(asset, "-")
+        signals[asset]
     )
 
-# =================================================
-# AI BRIEF
-# =================================================
+# ==============================================
+# BRIEF
+# ==============================================
 
 st.header("🧠 AI Brief")
 
-st.info(
-    result.get(
-        "brief",
-        "No summary available."
+if result:
+
+    st.info(
+        result.get(
+            "brief",
+            ""
+        )
     )
-)
-
-# =================================================
-# RISK ALERT
-# =================================================
-
-st.header("🚨 Risk Alerts")
-
-alerts = result.get(
-    "risk_alerts",
-    []
-)
-
-if alerts:
-
-    for alert in alerts:
-
-        st.warning(alert)
 
 else:
 
-    st.success(
-        "No major risk alerts."
+    st.info(
+        "OpenAI 분석 결과 없음"
     )
 
-# =================================================
+# ==============================================
 # PENSION MAP
-# =================================================
+# ==============================================
 
-st.header(
-    "🏦 Pension Allocation Map"
-)
+st.header("🏦 Pension Allocation Map")
 
-portfolio = [
+st.table([
     {
         "Institution":"CalPERS",
         "PE":"High",
         "Credit":"Medium",
         "Infra":"High",
-        "RE":"Low",
-        "Secondaries":"Medium"
+        "RE":"Low"
     },
     {
         "Institution":"CPP",
         "PE":"High",
         "Credit":"High",
         "Infra":"High",
-        "RE":"Low",
-        "Secondaries":"Medium"
+        "RE":"Low"
     },
     {
         "Institution":"APG",
         "PE":"Medium",
         "Credit":"Medium",
         "Infra":"High",
-        "RE":"Medium",
-        "Secondaries":"Low"
+        "RE":"Medium"
     },
     {
         "Institution":"AustralianSuper",
         "PE":"High",
         "Credit":"Medium",
         "Infra":"High",
-        "RE":"Medium",
-        "Secondaries":"Low"
+        "RE":"Medium"
     },
     {
         "Institution":"GPIF",
         "PE":"Medium",
         "Credit":"Low",
         "Infra":"Medium",
-        "RE":"Low",
-        "Secondaries":"Low"
+        "RE":"Low"
     }
-]
+])
 
-st.table(portfolio)
-
-# =================================================
-# ASSET ISSUE RADAR
-# =================================================
-
-st.header("📡 Asset Issue Radar")
-
-issues = result.get(
-    "asset_issues",
-    []
-)
-
-for issue in issues:
-
-    with st.expander(
-        issue.get(
-            "asset",
-            "Asset"
-        )
-    ):
-
-        st.write(
-            f"Risk Level: {issue.get('risk_level')}"
-        )
-
-        for item in issue.get(
-            "issues",
-            []
-        ):
-
-            st.write(
-                f"- {item}"
-            )
-
-# =================================================
-# REBALANCING
-# =================================================
-
-st.header(
-    "🔄 Rebalancing Tracker"
-)
-
-rebalancing = result.get(
-    "rebalancing",
-    []
-)
-
-for row in rebalancing:
-
-    st.subheader(
-        row.get(
-            "institution",
-            ""
-        )
-    )
-
-    st.write(
-        f"Signal: {row.get('signal')}"
-    )
-
-    st.caption(
-        row.get(
-            "reason",
-            ""
-        )
-    )
-
-    st.divider()
-
-# =================================================
+# ==============================================
 # NEWS
-# =================================================
+# ==============================================
 
 st.header("📰 Latest News")
 
-with st.expander(
-    "기사 보기"
-):
+if not articles:
 
-    for row in articles[:50]:
+    st.warning(
+        "기사 없음"
+    )
 
-        st.markdown(
-            f"**{row['title']}**"
-        )
+else:
 
-        st.write(
-            row["description"]
-        )
+    for row in articles[:30]:
 
-        if row["link"]:
+        with st.expander(
+            row["title"]
+        ):
 
-            st.markdown(
-                f"[원문 보기]({row['link']})"
+            st.write(
+                row["description"]
             )
 
-        st.divider()
+            if row["link"]:
+
+                st.markdown(
+                    f"[원문 보기]({row['link']})"
+                )
 ```
