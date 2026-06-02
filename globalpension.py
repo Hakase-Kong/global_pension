@@ -4,46 +4,43 @@ import requests
 import streamlit as st
 from openai import OpenAI
 
-# ==================================================
+# =====================================================
 
 # PAGE CONFIG
 
-# ==================================================
+# =====================================================
 
 st.set_page_config(
 page_title="Global Pension Radar",
 layout="wide"
 )
 
-# ==================================================
+# =====================================================
 
-# ENV
+# ENVIRONMENT VARIABLES
 
-# ==================================================
+# =====================================================
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 NAVER_CLIENT_ID = os.getenv("NAVER_CLIENT_ID")
 NAVER_CLIENT_SECRET = os.getenv("NAVER_CLIENT_SECRET")
 
-# ==================================================
+# =====================================================
 
-# OPENAI
+# OPENAI CLIENT
 
-# ==================================================
+# =====================================================
 
 client = None
 
-try:
 if OPENAI_API_KEY:
 client = OpenAI(api_key=OPENAI_API_KEY)
-except Exception:
-client = None
 
-# ==================================================
+# =====================================================
 
-# CONSTANTS
+# KEYWORDS
 
-# ==================================================
+# =====================================================
 
 KEYWORDS = [
 "CalPERS",
@@ -58,11 +55,11 @@ KEYWORDS = [
 "Secondaries"
 ]
 
-# ==================================================
+# =====================================================
 
-# NAVER NEWS
+# NAVER NEWS API
 
-# ==================================================
+# =====================================================
 
 @st.cache_data(ttl=3600)
 def search_news(query):
@@ -102,7 +99,10 @@ try:
 
     return data.get("items", [])
 
-except Exception:
+except Exception as e:
+
+    st.error(f"Naver API Error: {e}")
+
     return []
 ```
 
@@ -114,25 +114,27 @@ articles = []
 
 for keyword in KEYWORDS:
 
-    items = search_news(keyword)
+    news_items = search_news(keyword)
 
-    for item in items:
+    for item in news_items:
 
-        articles.append({
-            "keyword": keyword,
-            "title": item.get("title", ""),
-            "description": item.get("description", ""),
-            "link": item.get("originallink", "")
-        })
+        articles.append(
+            {
+                "keyword": keyword,
+                "title": item.get("title", ""),
+                "description": item.get("description", ""),
+                "link": item.get("originallink", "")
+            }
+        )
 
 return articles
 ```
 
-# ==================================================
+# =====================================================
 
-# GPT
+# OPENAI ANALYSIS
 
-# ==================================================
+# =====================================================
 
 def analyze_articles(articles):
 
@@ -145,7 +147,7 @@ if not articles:
 
 sample = articles[:50]
 
-text = "\n".join(
+news_text = "\n".join(
     [
         f"- {x['title']} | {x['description']}"
         for x in sample
@@ -155,38 +157,27 @@ text = "\n".join(
 prompt = f"""
 ```
 
-You are a global pension fund strategist.
+You are a global pension investment strategist.
 
 Analyze the following news.
 
-Return ONLY valid JSON.
+Return ONLY JSON.
 
 {{
 "signals": {{
-"Private Equity":"",
-"Private Credit":"",
-"Infrastructure":"",
-"Real Estate":"",
-"Secondaries":""
+"Private Equity": "",
+"Private Credit": "",
+"Infrastructure": "",
+"Real Estate": "",
+"Secondaries": ""
 }},
-"brief":"",
-"risk_alerts":[],
-"asset_issues":[],
-"rebalancing":[]
+"brief": "",
+"risk_alerts": []
 }}
-
-Signal values:
-
-Increase
-Selective
-Watch
-Reduce
-De-risking
-Income Shift
 
 News:
 
-{text}
+{news_text}
 """
 
 ```
@@ -208,7 +199,7 @@ try:
     end = content.rfind("}")
 
     if start >= 0 and end >= 0:
-        content = content[start:end+1]
+        content = content[start:end + 1]
 
     return json.loads(content)
 
@@ -219,11 +210,11 @@ except Exception as e:
     return None
 ```
 
-# ==================================================
+# =====================================================
 
 # HEADER
 
-# ==================================================
+# =====================================================
 
 st.title("🌍 Global Pension Radar")
 
@@ -231,26 +222,26 @@ st.caption(
 "AI 기반 해외 연기금 대체투자 시그널 분석"
 )
 
-# ==================================================
+# =====================================================
 
 # SIDEBAR
 
-# ==================================================
+# =====================================================
 
 st.sidebar.header("Settings")
 
-run = st.sidebar.button(
+run_button = st.sidebar.button(
 "🚀 분석 실행",
 use_container_width=True
 )
 
-# ==================================================
+# =====================================================
 
 # MAIN
 
-# ==================================================
+# =====================================================
 
-if run:
+if run_button:
 
 ```
 with st.spinner("뉴스 수집 중..."):
@@ -258,7 +249,7 @@ with st.spinner("뉴스 수집 중..."):
     articles = collect_news()
 
 st.success(
-    f"{len(articles)}건 기사 수집"
+    f"{len(articles)}건 기사 수집 완료"
 )
 
 result = None
@@ -267,17 +258,13 @@ if client:
 
     with st.spinner("AI 분석 중..."):
 
-        result = analyze_articles(
-            articles
-        )
+        result = analyze_articles(articles)
 
-# ==============================================
-# EXECUTIVE
-# ==============================================
+# =================================================
+# EXECUTIVE RADAR
+# =================================================
 
 st.header("📊 Executive Radar")
-
-cols = st.columns(5)
 
 default_signals = {
     "Private Equity": "-",
@@ -295,18 +282,26 @@ if result:
 else:
     signals = default_signals
 
-assets = list(signals.keys())
+cols = st.columns(5)
 
-for idx, asset in enumerate(assets):
+assets = [
+    "Private Equity",
+    "Private Credit",
+    "Infrastructure",
+    "Real Estate",
+    "Secondaries"
+]
 
-    cols[idx].metric(
+for i, asset in enumerate(assets):
+
+    cols[i].metric(
         asset,
-        signals[asset]
+        signals.get(asset, "-")
     )
 
-# ==============================================
-# BRIEF
-# ==============================================
+# =================================================
+# AI BRIEF
+# =================================================
 
 st.header("🧠 AI Brief")
 
@@ -315,7 +310,7 @@ if result:
     st.info(
         result.get(
             "brief",
-            ""
+            "분석 결과 없음"
         )
     )
 
@@ -325,73 +320,88 @@ else:
         "OpenAI 분석 결과 없음"
     )
 
-# ==============================================
+# =================================================
+# RISK ALERT
+# =================================================
+
+st.header("🚨 Risk Alerts")
+
+if result:
+
+    alerts = result.get(
+        "risk_alerts",
+        []
+    )
+
+    if alerts:
+
+        for alert in alerts:
+            st.warning(alert)
+
+    else:
+        st.success("Risk Alert 없음")
+
+# =================================================
 # PENSION MAP
-# ==============================================
+# =================================================
 
 st.header("🏦 Pension Allocation Map")
 
 st.table([
     {
-        "Institution":"CalPERS",
-        "PE":"High",
-        "Credit":"Medium",
-        "Infra":"High",
-        "RE":"Low"
+        "Institution": "CalPERS",
+        "PE": "High",
+        "Credit": "Medium",
+        "Infra": "High",
+        "RE": "Low"
     },
     {
-        "Institution":"CPP",
-        "PE":"High",
-        "Credit":"High",
-        "Infra":"High",
-        "RE":"Low"
+        "Institution": "CPP",
+        "PE": "High",
+        "Credit": "High",
+        "Infra": "High",
+        "RE": "Low"
     },
     {
-        "Institution":"APG",
-        "PE":"Medium",
-        "Credit":"Medium",
-        "Infra":"High",
-        "RE":"Medium"
+        "Institution": "APG",
+        "PE": "Medium",
+        "Credit": "Medium",
+        "Infra": "High",
+        "RE": "Medium"
     },
     {
-        "Institution":"AustralianSuper",
-        "PE":"High",
-        "Credit":"Medium",
-        "Infra":"High",
-        "RE":"Medium"
+        "Institution": "AustralianSuper",
+        "PE": "High",
+        "Credit": "Medium",
+        "Infra": "High",
+        "RE": "Medium"
     },
     {
-        "Institution":"GPIF",
-        "PE":"Medium",
-        "Credit":"Low",
-        "Infra":"Medium",
-        "RE":"Low"
+        "Institution": "GPIF",
+        "PE": "Medium",
+        "Credit": "Low",
+        "Infra": "Medium",
+        "RE": "Low"
     }
 ])
 
-# ==============================================
+# =================================================
 # NEWS
-# ==============================================
+# =================================================
 
 st.header("📰 Latest News")
 
 if not articles:
 
-    st.warning(
-        "기사 없음"
-    )
+    st.warning("수집된 뉴스 없음")
 
 else:
 
     for row in articles[:30]:
 
-        with st.expander(
-            row["title"]
-        ):
+        with st.expander(row["title"]):
 
-            st.write(
-                row["description"]
-            )
+            st.write(row["description"])
 
             if row["link"]:
 
