@@ -3,7 +3,7 @@ import re
 import io
 import json
 import requests
-import pdfplumber
+import fitz  # pymupdf
 import pandas as pd
 import streamlit as st
 import plotly.express as px
@@ -139,28 +139,38 @@ def collect_news():
 # PDF
 # =====================================================
 
+MAX_PAGES_PER_PDF = 30
+MAX_CHARS_PER_PDF = 15000
+
 def extract_pdf_text(uploaded_file):
 
     text = ""
 
     try:
 
-        file_bytes = io.BytesIO(uploaded_file.read())
+        file_bytes = uploaded_file.read()
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
 
-        with pdfplumber.open(file_bytes) as pdf:
+        for i, page in enumerate(doc):
 
-            for page in pdf.pages:
+            if i >= MAX_PAGES_PER_PDF:
+                break
 
-                page_text = page.extract_text()
+            page_text = page.get_text()
 
-                if page_text:
-                    text += page_text + "\n"
+            if page_text:
+                text += page_text + "\n"
+
+            if len(text) >= MAX_CHARS_PER_PDF:
+                break
+
+        doc.close()
 
     except Exception as e:
 
         st.error(f"PDF Error: {e}")
 
-    return text
+    return text[:MAX_CHARS_PER_PDF]
 
 # =====================================================
 # OPENAI ANALYSIS
