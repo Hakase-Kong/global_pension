@@ -532,23 +532,50 @@ run_button = st.sidebar.button(
 # MAIN
 # =====================================================
 
-def normalize_fund_name(new_name, existing_names, threshold=0.82):
+def normalize_fund_name(new_name, existing_names, threshold=0.72):
     """
     새 펀드명을 기존 이름 목록과 비교해 유사한 이름이 있으면 그것을 반환.
     없으면 new_name 그대로 반환.
     """
     if not existing_names:
         return new_name
+
     # 대소문자·구두점 무시한 정규화
     def clean(s):
         return re.sub(r"[^a-z0-9 ]", "", s.lower()).strip()
 
+    # 비교 전 "investments", "investment board" 등 변형 접미사 제거
+    _STRIP_SUFFIXES = [
+        "investment board", "investments", "investment", "pension plan",
+        "pension fund", "pension", "capital", "asset management",
+    ]
+    def core(s):
+        t = clean(s)
+        for sfx in _STRIP_SUFFIXES:
+            if t.endswith(sfx):
+                t = t[: -len(sfx)].strip()
+        return t
+
     clean_new = clean(new_name)
+    core_new = core(new_name)
     best_match = None
     best_score = 0.0
 
     for name in existing_names:
-        score = difflib.SequenceMatcher(None, clean_new, clean(name)).ratio()
+        clean_name = clean(name)
+        core_name = core(name)
+
+        # 1) 한쪽이 다른 쪽 문자열에 포함되면 즉시 매칭 (substring)
+        if clean_new in clean_name or clean_name in clean_new:
+            return name
+        if core_new and core_name and (core_new in core_name or core_name in core_new):
+            return name
+
+        # 2) SequenceMatcher — 원본 & 접미사 제거 버전 중 높은 점수 사용
+        score = max(
+            difflib.SequenceMatcher(None, clean_new, clean_name).ratio(),
+            difflib.SequenceMatcher(None, core_new, core_name).ratio() if core_new and core_name else 0,
+        )
         if score > best_score:
             best_score = score
             best_match = name
