@@ -289,28 +289,29 @@ def summarize_pdf(uploaded_file):
 
     content.append({
         "type": "text",
-        "text": f"""These are pages from pension fund annual report '{filename}'.
+        "text": f"""These are selected pages from a pension fund annual report (filename: '{filename}').
+
+Your task: find ONE primary asset allocation breakdown table or chart (the main portfolio mix showing all major asset classes and their weights).
 
 Return ONLY this JSON:
 {{
-  "fund_name": "<full official fund name as printed in the report, e.g. 'Ontario Teachers Pension Plan', 'CPP Investments', 'Government Pension Fund Global'>",
-  "report_year": "<the fiscal year these figures represent, as a 4-digit year string, e.g. '2024'>",
-  "summary": "<150-word summary: allocation, private markets, risks, opportunities>",
+  "fund_name": "<full official fund name exactly as printed>",
+  "report_year": "<fiscal year end as 4-digit string, e.g. '2024'>",
+  "summary": "<120-word summary: allocation, private markets, risks, opportunities>",
+  "allocation_source": "<briefly describe which table/chart you used, e.g. 'Net Investments table on page 2'>",
   "allocation": {{
-    "<asset class name exactly as shown>": <% as number>
+    "<asset class name exactly as labeled in that table/chart>": <% as number, positive only>
   }},
   "allocation_found": true or false
 }}
 
-STRICT RULES:
-1. fund_name: use the COMPLETE official name. Do NOT abbreviate or shorten it.
-2. report_year: use the year the data represents (fiscal year end), NOT the publication year.
-3. Copy asset class names EXACTLY as shown in charts/tables.
-4. Use ONLY percentages explicitly shown — read directly from the page.
-5. If amounts are in dollars, calculate % using the total shown.
-6. Exclude leverage/funding items (negative values).
-7. If no allocation data is visible, return "allocation": {{}} and "allocation_found": false.
-8. NEVER guess or fabricate numbers."""
+STRICT RULES — violations cause incorrect charts shown to users:
+1. Use ONLY ONE consistent breakdown table. Do NOT mix numbers from multiple tables.
+2. Percentages MUST come from the same table. If the table shows dollar amounts, divide each by the positive total to get %.
+3. EXCLUDE any item with a negative value (leverage, borrowing, funding costs).
+4. The allocation values should sum to approximately 100%. If they do not, you have mixed sources — pick just one table.
+5. If you cannot identify a single clear allocation table, return "allocation": {{}} and "allocation_found": false.
+6. NEVER estimate, infer, or fabricate. Only transcribe what is explicitly printed."""
     })
 
     try:
@@ -323,10 +324,11 @@ STRICT RULES:
         fund_name = data.get("fund_name", filename)
         year = str(data.get("report_year", ""))
         summary = data.get("summary", "")
+        alloc_source = data.get("allocation_source", "")
         raw_alloc = data.get("allocation", {})
         found = data.get("allocation_found", bool(raw_alloc))
 
-        # 자산군 이름 정규화 + 음수/0 제거 + 같은 canonical로 합산
+        # 자산군 이름 정규화 + 음수/0 제거 + 동일 canonical 합산
         allocation = {}
         for k, v in raw_alloc.items():
             try:
@@ -338,9 +340,26 @@ STRICT RULES:
             canonical = normalize_asset_name(k)
             allocation[canonical] = allocation.get(canonical, 0) + val
 
+        # 합계 검증 (80~120% 이내여야 신뢰 가능)
+        total = sum(allocation.values())
+        is_reliable = (80 <= total <= 120) if allocation else False
+
         if not found or not allocation:
-            st.warning(f"'{filename}': 배분 데이터를 시각적으로 확인하지 못했습니다.")
+            st.warning(f"⚠️ **'{filename}'**: 배분 데이터를 확인하지 못했습니다.")
             allocation = {}
+        elif not is_reliable:
+            st.error(
+                f"❌ **'{filename}'** 추출 실패 — "
+                f"합계가 {total:.1f}%로 100%에서 크게 벗어납니다. "
+                f"(출처: {alloc_source or 'unknown'})\n\n"
+                f"원본: {dict(list(raw_alloc.items())[:8])}"
+            )
+            allocation = {}  # 신뢰 불가 → 버림
+        else:
+            # 성공 시 추출 근거 표시
+            with st.expander(f"📋 '{filename}' 추출 내역 (합계 {total:.1f}%)"):
+                st.caption(f"출처: {alloc_source}")
+                st.json({k: f"{v:.1f}%" for k, v in allocation.items()})
 
     except Exception as e:
         st.warning(f"'{filename}' 분석 실패: {e}")
