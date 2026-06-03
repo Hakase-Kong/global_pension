@@ -165,58 +165,76 @@ HIGH_VALUE_KEYWORDS = [
 # ─── 자산군 이름 정규화 ───────────────────────────────
 # 소문자·구두점 정규화 후 매핑할 canonical 이름 사전
 ASSET_CANONICAL = {
-    # Equity variants
+    # ── Equity ──────────────────────────────────────────
+    "public equity": "Public Equity",
+    "public equities": "Public Equity",
+    "listed equity": "Public Equity",
+    "listed equities": "Public Equity",
+    "global equity": "Public Equity",
+    "global equities": "Public Equity",
+    "private equity": "Private Equity",
+    "private equities": "Private Equity",
+    "pe": "Private Equity",
+    "venture growth": "Venture Growth",
+    "venture capital": "Venture Growth",
+    # broad equity (only when no public/private split given)
     "equity": "Equity",
     "equities": "Equity",
-    "public equity": "Public Equity",
-    "listed equity": "Public Equity",
-    "global equity": "Public Equity",
-    "private equity": "Private Equity",
-    "pe": "Private Equity",
-    # Fixed Income variants
+    # ── Fixed Income ─────────────────────────────────────
     "fixed income": "Fixed Income",
     "fixed-income": "Fixed Income",
     "fixed income securities": "Fixed Income",
     "public fixed income": "Fixed Income",
     "bonds": "Fixed Income",
     "government bonds": "Fixed Income",
-    # Infrastructure
-    "infrastructure": "Infrastructure",
-    "infra": "Infrastructure",
+    "rates": "Fixed Income",
+    # ── Infrastructure ───────────────────────────────────
     "unlisted infrastructure": "Infrastructure",
     "listed infrastructure": "Infrastructure",
     "real infrastructure": "Infrastructure",
-    # Real Assets / Real Estate
+    "infrastructure": "Infrastructure",
+    "infra": "Infrastructure",
+    # ── Real Assets (combined) ───────────────────────────
     "real assets": "Real Assets",
-    "real estate": "Real Estate",
+    # ── Real Estate ──────────────────────────────────────
     "unlisted real estate": "Real Estate",
     "listed real estate": "Real Estate",
+    "real estate": "Real Estate",
     "property": "Real Estate",
-    # Credit / Private Credit
-    "credit": "Credit",
+    # ── Credit ───────────────────────────────────────────
+    "credit investments": "Credit",
     "private credit": "Private Credit",
     "private debt": "Private Credit",
-    "credit investments": "Credit",
-    # Inflation Sensitive
+    "credit": "Credit",
+    # ── Inflation Sensitive & sub-items ──────────────────
     "inflation sensitive": "Inflation Sensitive",
     "inflation-sensitive": "Inflation Sensitive",
+    "inflation hedge": "Inflation Hedge",
+    "inflation hedging": "Inflation Hedge",
     "real return": "Inflation Sensitive",
-    # Alternatives / Absolute Return
+    "commodities": "Commodities",
+    "commodity": "Commodities",
+    # ── Natural Resources ────────────────────────────────
+    "natural resources": "Natural Resources",
+    "natural resource": "Natural Resources",
+    # ── Absolute Return / Alternatives ───────────────────
     "absolute return strategies": "Absolute Return",
+    "absolute return strategy": "Absolute Return",
     "absolute return": "Absolute Return",
     "alternatives": "Alternatives",
+    "alternative investments": "Alternatives",
     "hedge funds": "Alternatives",
-    # Natural Resources
-    "natural resources": "Natural Resources",
-    "commodities": "Natural Resources",
-    # Secondaries
+    # ── Secondaries ──────────────────────────────────────
     "secondaries": "Secondaries",
-    # Cash
-    "cash": "Cash",
+    # ── Cash ─────────────────────────────────────────────
+    "cash and cash equivalents": "Cash",
     "cash and equivalents": "Cash",
+    "short term investments": "Cash",
     "money market": "Cash",
-    # Renewable Energy
+    "cash": "Cash",
+    # ── Renewable Energy ─────────────────────────────────
     "unlisted renewable energy infrastructure": "Renewable Energy Infrastructure",
+    "renewable energy infrastructure": "Renewable Energy Infrastructure",
     "renewable energy": "Renewable Energy Infrastructure",
 }
 
@@ -311,14 +329,16 @@ Return ONLY this JSON:
 }}
 
 STRICT RULES:
-1. Use ONLY ONE table. Do NOT mix percentages from different tables.
-2. If the table shows dollar amounts only, calculate % = each item / sum of positive items × 100.
-3. EXCLUDE items with negative values (leverage, funding, borrowing).
-4. The allocation values must sum to approximately 100%.
-5. If no clear allocation table exists in the text, return "allocation": {{}} and "allocation_found": false.
-6. NEVER fabricate or estimate. Only use numbers explicitly in the text.
-7. Always separate "Public Equities" and "Private Equities" as distinct keys. Never merge them into a single "Equities" or "Equity" key.
-8. If the report uses "Real Assets" as a combined category (infrastructure + real estate), use "Real Assets" as a single key. Do NOT split it.
+1. Use ONLY ONE table — prefer the most detailed asset mix table (e.g. "Detailed Asset Mix").
+2. Use the LEAF-LEVEL (most granular) rows, not subtotal/parent rows. For example, if the table shows "Public equity 18%", "Private equity 19%", "Venture growth 6%" under an "Equity" header, extract each sub-item separately — do NOT use the "Equity 43%" subtotal.
+3. EXCEPTION: If a category has no sub-items in the table (e.g. "Fixed income 23%", "Credit 14%"), keep it as-is.
+4. EXCEPTION: If the table only shows "Real Assets" as a single combined line (no sub-items), keep it as one key.
+5. If the table shows dollar amounts only, calculate % = each item / sum of positive items × 100.
+6. EXCLUDE items with negative values (leverage, funding, borrowing, "funding and other").
+7. The allocation values (after excluding negatives) must sum to approximately 100%.
+8. If no clear allocation table exists in the text, return "allocation": {{}} and "allocation_found": false.
+9. NEVER fabricate or estimate. Only use numbers explicitly in the text.
+10. Use the exact category name as written in the table (e.g. "Public equity", "Venture growth", "Inflation hedge", "Natural resources").
 
 PAGES:
 {page_text}"""
