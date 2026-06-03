@@ -1,5 +1,6 @@
 import os
 import re
+import io
 import json
 import requests
 import pdfplumber
@@ -144,7 +145,9 @@ def extract_pdf_text(uploaded_file):
 
     try:
 
-        with pdfplumber.open(uploaded_file) as pdf:
+        file_bytes = io.BytesIO(uploaded_file.read())
+
+        with pdfplumber.open(file_bytes) as pdf:
 
             for page in pdf.pages:
 
