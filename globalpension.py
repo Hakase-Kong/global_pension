@@ -376,12 +376,9 @@ PAGES:
             st.warning(f"⚠️ **'{filename}'**: 배분 데이터를 확인하지 못했습니다.")
             allocation = {}
         else:
-            # 합계가 100% 초과(레버리지 구조)이거나 미달이면 정규화
-            note = ""
-            if not (90 <= total <= 110):
-                note = f" → 정규화 전 합계 {total:.1f}% (레버리지 제외 후 100% 기준으로 조정)"
-                allocation = {k: round(v / total * 100, 1) for k, v in allocation.items()}
-
+            # 정규화 하지 않음 — 원본 PDF 비중 그대로 유지
+            # (레버리지 구조 펀드는 양수 합계가 100% 초과할 수 있음)
+            note = f" (합계 {total:.1f}%)" if not (90 <= total <= 110) else ""
             with st.expander(f"📋 '{filename}' 추출 내역{note}"):
                 st.caption(f"출처: {alloc_source or '-'}")
                 st.json({k: f"{v:.1f}%" for k, v in allocation.items()})
@@ -689,15 +686,22 @@ if result or fund_timeseries or articles:
         selected_year = st.selectbox("Select Year", years_available, key="sel_year")
 
         alloc = fund_timeseries[selected_fund][selected_year]
-        total = sum(float(v) for v in alloc.values())
-        df_pie = pd.DataFrame({
+        df_bar = pd.DataFrame({
             "Asset": list(alloc.keys()),
-            "Weight": [round(float(v) / total * 100, 1) if total else float(v) for v in alloc.values()]
-        })
-        fig = px.pie(
-            df_pie, names="Asset", values="Weight",
-            title=f"{selected_fund} ({selected_year}) Allocation"
+            "Weight": [round(float(v), 1) for v in alloc.values()]
+        }).sort_values("Weight", ascending=True)
+
+        total = df_bar["Weight"].sum()
+        note = f" (합계 {total:.1f}% — 레버리지 구조)" if not (90 <= total <= 110) else ""
+
+        fig = px.bar(
+            df_bar, x="Weight", y="Asset", orientation="h",
+            title=f"{selected_fund} ({selected_year}) Allocation{note}",
+            text="Weight",
+            labels={"Weight": "Asset Mix (%)", "Asset": ""}
         )
+        fig.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
+        fig.update_layout(xaxis_title="Asset Mix (%)", yaxis_title="")
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("PDF를 업로드하고 Run Analysis를 실행하면 실제 배분 데이터가 표시됩니다.")
