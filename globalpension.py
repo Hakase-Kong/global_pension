@@ -4,6 +4,7 @@ import io
 import json
 import base64
 import requests
+import difflib
 import fitz  # pymupdf
 import pandas as pd
 import streamlit as st
@@ -218,8 +219,8 @@ def summarize_pdf(uploaded_file):
 
 Return ONLY this JSON:
 {{
-  "fund_name": "<official fund name>",
-  "report_year": "<fiscal year end year, e.g. 2024>",
+  "fund_name": "<full official fund name as printed in the report, e.g. 'Ontario Teachers Pension Plan', 'CPP Investments', 'Government Pension Fund Global'>",
+  "report_year": "<the fiscal year these figures represent, as a 4-digit year string, e.g. '2024'>",
   "summary": "<150-word summary: allocation, private markets, risks, opportunities>",
   "allocation": {{
     "<asset class name exactly as shown>": <% as number>
@@ -228,12 +229,14 @@ Return ONLY this JSON:
 }}
 
 STRICT RULES:
-1. Copy asset class names EXACTLY as shown in charts/tables.
-2. Use ONLY percentages explicitly shown — read directly from the page.
-3. If amounts are in dollars, calculate % using the total shown.
-4. Exclude leverage/funding items (negative values).
-5. If no allocation data is visible, return "allocation": {{}} and "allocation_found": false.
-6. NEVER guess or fabricate numbers."""
+1. fund_name: use the COMPLETE official name. Do NOT abbreviate or shorten it.
+2. report_year: use the year the data represents (fiscal year end), NOT the publication year.
+3. Copy asset class names EXACTLY as shown in charts/tables.
+4. Use ONLY percentages explicitly shown — read directly from the page.
+5. If amounts are in dollars, calculate % using the total shown.
+6. Exclude leverage/funding items (negative values).
+7. If no allocation data is visible, return "allocation": {{}} and "allocation_found": false.
+8. NEVER guess or fabricate numbers."""
     })
 
     try:
@@ -402,6 +405,30 @@ run_button = st.sidebar.button(
 # MAIN
 # =====================================================
 
+def normalize_fund_name(new_name, existing_names, threshold=0.82):
+    """
+    새 펀드명을 기존 이름 목록과 비교해 유사한 이름이 있으면 그것을 반환.
+    없으면 new_name 그대로 반환.
+    """
+    if not existing_names:
+        return new_name
+    # 대소문자·구두점 무시한 정규화
+    def clean(s):
+        return re.sub(r"[^a-z0-9 ]", "", s.lower()).strip()
+
+    clean_new = clean(new_name)
+    best_match = None
+    best_score = 0.0
+
+    for name in existing_names:
+        score = difflib.SequenceMatcher(None, clean_new, clean(name)).ratio()
+        if score > best_score:
+            best_score = score
+            best_match = name
+
+    return best_match if best_score >= threshold else new_name
+
+
 if run_button:
 
     report_summaries = ""
@@ -422,9 +449,11 @@ if run_button:
                 summary, fund_name, year, allocation = summarize_pdf(report)
                 report_summaries += summary + "\n\n"
                 if allocation and fund_name:
-                    if fund_name not in fund_timeseries:
-                        fund_timeseries[fund_name] = {}
-                    fund_timeseries[fund_name][year or "Unknown"] = allocation
+                    # 유사한 펀드명이 이미 있으면 그 이름으로 통합
+                    canonical = normalize_fund_name(fund_name, list(fund_timeseries.keys()))
+                    if canonical not in fund_timeseries:
+                        fund_timeseries[canonical] = {}
+                    fund_timeseries[canonical][year or "Unknown"] = allocation
 
             summary_bar.progress((i + 1) / len(uploaded_reports))
 
