@@ -226,10 +226,11 @@ def normalize_asset_name(raw_name: str) -> str:
     # 완전 일치 먼저
     if key in ASSET_CANONICAL:
         return ASSET_CANONICAL[key]
-    # 부분 일치 (포함 관계)
-    for k, v in ASSET_CANONICAL.items():
+    # 부분 일치 — 긴 키(더 구체적)부터 매칭해야 "equities"가 "public equities"를 가로채지 않음
+    sorted_keys = sorted(ASSET_CANONICAL.keys(), key=len, reverse=True)
+    for k in sorted_keys:
         if k in key or key in k:
-            return v
+            return ASSET_CANONICAL[k]
     # 그래도 없으면 Title Case 반환
     return raw_name.strip().title()
 
@@ -316,6 +317,8 @@ STRICT RULES:
 4. The allocation values must sum to approximately 100%.
 5. If no clear allocation table exists in the text, return "allocation": {{}} and "allocation_found": false.
 6. NEVER fabricate or estimate. Only use numbers explicitly in the text.
+7. Always separate "Public Equities" and "Private Equities" as distinct keys. Never merge them into a single "Equities" or "Equity" key.
+8. If the report uses "Real Assets" as a combined category (infrastructure + real estate), use "Real Assets" as a single key. Do NOT split it.
 
 PAGES:
 {page_text}"""
