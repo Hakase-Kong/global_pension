@@ -1,9 +1,8 @@
 import os
 import re
-import io
+import base64
 import json
 import requests
-import fitz  # pymupdf
 import pandas as pd
 import streamlit as st
 import plotly.express as px
@@ -139,38 +138,12 @@ def collect_news():
 # PDF
 # =====================================================
 
-MAX_PAGES_PER_PDF = 30
-MAX_CHARS_PER_PDF = 15000
-
-def extract_pdf_text(uploaded_file):
-
-    text = ""
-
-    try:
-
-        file_bytes = uploaded_file.read()
-        doc = fitz.open(stream=file_bytes, filetype="pdf")
-
-        for i, page in enumerate(doc):
-
-            if i >= MAX_PAGES_PER_PDF:
-                break
-
-            page_text = page.get_text()
-
-            if page_text:
-                text += page_text + "\n"
-
-            if len(text) >= MAX_CHARS_PER_PDF:
-                break
-
-        doc.close()
-
-    except Exception as e:
-
-        st.error(f"PDF Error: {e}")
-
-    return text[:MAX_CHARS_PER_PDF]
+def encode_pdf(uploaded_file):
+    """PDF를 base64로 인코딩해서 반환 (파싱 없이 OpenAI에 직접 전달)"""
+    file_bytes = uploaded_file.read()
+    b64 = base64.standard_b64encode(file_bytes).decode("utf-8")
+    del file_bytes
+    return b64, uploaded_file.name
 
 # =====================================================
 # OPENAI ANALYSIS
@@ -178,7 +151,7 @@ def extract_pdf_text(uploaded_file):
 
 def analyze_intelligence(
     articles,
-    report_text
+    pdf_files=None
 ):
 
     if not client:
@@ -191,12 +164,9 @@ def analyze_intelligence(
         ]
     )
 
-    report_text = report_text[:30000]
+    prompt = """You are CIO advisor for a Korean insurance company.
 
-    prompt = f"""
-You are CIO advisor for a Korean insurance company.
-
-Analyze:
+Analyze the attached pension reports and news below:
 
 1. Global pension allocation shifts
 2. Private market trends
@@ -207,38 +177,52 @@ Analyze:
 
 Return ONLY JSON.
 
-{{
- "signals": {{
+{
+ "signals": {
    "Private Equity":"",
    "Private Credit":"",
    "Infrastructure":"",
    "Real Estate":"",
    "Secondaries":""
- }},
+ },
  "brief":"",
  "opportunities":[],
  "risk_alerts":[],
  "implications":""
-}}
+}
 
 NEWS:
-{news_text}
+""" + news_text
 
-REPORTS:
-{report_text}
-"""
+    # 메시지 content 구성: PDF 파일 + 텍스트 프롬프트
+    content = []
+
+    if pdf_files:
+        for b64_data, filename in pdf_files:
+            content.append({
+                "type": "file",
+                "file": {
+                    "filename": filename,
+                    "file_data": f"data:application/pdf;base64,{b64_data}"
+                }
+            })
+
+    content.append({
+        "type": "text",
+        "text": prompt
+    })
 
     try:
 
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",  # PDF 직접 처리는 gpt-4o 필요
             response_format={
                 "type": "json_object"
             },
             messages=[
                 {
                     "role": "user",
-                    "content": prompt
+                    "content": content
                 }
             ]
         )
@@ -317,10 +301,14 @@ st.caption(
 st.sidebar.header("Settings")
 
 uploaded_reports = st.sidebar.file_uploader(
-    "Upload Pension Reports",
+    "Upload Pension Reports (최대 3개, 각 10MB 이하 권장)",
     type=["pdf"],
     accept_multiple_files=True
 )
+
+if uploaded_reports and len(uploaded_reports) > 3:
+    st.sidebar.warning("PDF는 최대 3개까지만 처리됩니다.")
+    uploaded_reports = uploaded_reports[:3]
 
 run_button = st.sidebar.button(
     "🚀 Run Analysis",
@@ -333,20 +321,17 @@ run_button = st.sidebar.button(
 
 if run_button:
 
-    report_text = ""
+    pdf_files = []
 
     if uploaded_reports:
 
         with st.spinner(
-            "Reading reports..."
+            "Encoding reports..."
         ):
 
             for report in uploaded_reports:
-
-                report_text += (
-                    extract_pdf_text(report)
-                    + "\n"
-                )
+                b64, name = encode_pdf(report)
+                pdf_files.append((b64, name))
 
     with st.spinner(
         "Collecting news..."
@@ -368,7 +353,7 @@ if run_button:
 
             result = analyze_intelligence(
                 articles,
-                report_text
+                pdf_files if pdf_files else None
             )
 
     # ==========================================
