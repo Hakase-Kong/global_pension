@@ -143,43 +143,117 @@ def collect_news():
 
 ALLOC_KEYWORDS = [
     "asset mix", "asset allocation", "asset class", "portfolio mix",
-    "allocation", "equity", "fixed income", "infrastructure",
-    "private equity", "real assets", "credit", "% of net assets",
-    "net investments", "portfolio breakdown", "investment mix",
-    "total portfolio", "net assets"
+    "allocation", "equity", "fixed income", "fixed-income",
+    "infrastructure", "private equity", "real assets", "credit",
+    "% of net assets", "net investments", "portfolio breakdown",
+    "investment mix", "total portfolio", "net assets", "as at",
+    "portfolio overview", "strategic allocation", "asset breakdown"
 ]
 
-def get_top_pages_as_images(uploaded_file, max_pages=5, dpi=120):
+# ─── 자산군 이름 정규화 ───────────────────────────────
+# 소문자·구두점 정규화 후 매핑할 canonical 이름 사전
+ASSET_CANONICAL = {
+    # Equity variants
+    "equity": "Equity",
+    "equities": "Equity",
+    "public equity": "Public Equity",
+    "listed equity": "Public Equity",
+    "global equity": "Public Equity",
+    "private equity": "Private Equity",
+    "pe": "Private Equity",
+    # Fixed Income variants
+    "fixed income": "Fixed Income",
+    "fixed-income": "Fixed Income",
+    "fixed income securities": "Fixed Income",
+    "public fixed income": "Fixed Income",
+    "bonds": "Fixed Income",
+    "government bonds": "Fixed Income",
+    # Infrastructure
+    "infrastructure": "Infrastructure",
+    "infra": "Infrastructure",
+    "unlisted infrastructure": "Infrastructure",
+    "listed infrastructure": "Infrastructure",
+    "real infrastructure": "Infrastructure",
+    # Real Assets / Real Estate
+    "real assets": "Real Assets",
+    "real estate": "Real Estate",
+    "unlisted real estate": "Real Estate",
+    "listed real estate": "Real Estate",
+    "property": "Real Estate",
+    # Credit / Private Credit
+    "credit": "Credit",
+    "private credit": "Private Credit",
+    "private debt": "Private Credit",
+    "credit investments": "Credit",
+    # Inflation Sensitive
+    "inflation sensitive": "Inflation Sensitive",
+    "inflation-sensitive": "Inflation Sensitive",
+    "real return": "Inflation Sensitive",
+    # Alternatives / Absolute Return
+    "absolute return strategies": "Absolute Return",
+    "absolute return": "Absolute Return",
+    "alternatives": "Alternatives",
+    "hedge funds": "Alternatives",
+    # Natural Resources
+    "natural resources": "Natural Resources",
+    "commodities": "Natural Resources",
+    # Secondaries
+    "secondaries": "Secondaries",
+    # Cash
+    "cash": "Cash",
+    "cash and equivalents": "Cash",
+    "money market": "Cash",
+    # Renewable Energy
+    "unlisted renewable energy infrastructure": "Renewable Energy Infrastructure",
+    "renewable energy": "Renewable Energy Infrastructure",
+}
+
+def normalize_asset_name(raw_name: str) -> str:
+    """자산군 이름을 canonical 형태로 정규화."""
+    key = re.sub(r"[^a-z0-9 ]", "", raw_name.lower()).strip()
+    # 완전 일치 먼저
+    if key in ASSET_CANONICAL:
+        return ASSET_CANONICAL[key]
+    # 부분 일치 (포함 관계)
+    for k, v in ASSET_CANONICAL.items():
+        if k in key or key in k:
+            return v
+    # 그래도 없으면 Title Case 반환
+    return raw_name.strip().title()
+
+
+def get_top_pages_as_images(uploaded_file, max_pages=6, dpi=130):
     """
     키워드 점수가 높은 페이지를 이미지로 렌더링해 base64 목록 반환.
-    텍스트가 없는 차트/이미지 페이지도 정확하게 인식.
+    - 앞 3페이지는 무조건 포함 (커버·목차에 요약 배분이 있는 경우 대비)
+    - 이후 키워드 점수 높은 페이지 추가 선택
     """
     try:
         file_bytes = uploaded_file.read()
         doc = fitz.open(stream=io.BytesIO(file_bytes), filetype="pdf")
         del file_bytes
 
-        scored = []
+        scored = {}
         for i, page in enumerate(doc):
             t = page.get_text() or ""
             score = sum(1 for kw in ALLOC_KEYWORDS if kw.lower() in t.lower())
-            # 텍스트가 거의 없어도(이미지 페이지) 앞 5페이지는 포함
-            if score > 0 or i < 5:
-                scored.append((score, i))
+            # 앞 3페이지는 점수에 보너스
+            if i < 3:
+                score += 3
+            scored[i] = score
 
-        # 상위 페이지 선택
+        # 점수 상위 max_pages 페이지 선택, 페이지 순서대로 정렬
         top_idxs = sorted(
-            sorted(scored, key=lambda x: -x[0])[:max_pages],
-            key=lambda x: x[1]  # 페이지 순서 복원
+            sorted(scored.keys(), key=lambda i: -scored[i])[:max_pages]
         )
 
         images_b64 = []
         mat = fitz.Matrix(dpi / 72, dpi / 72)
-        for _, idx in top_idxs:
+        for idx in top_idxs:
             pix = doc[idx].get_pixmap(matrix=mat, alpha=False)
             png_bytes = pix.tobytes("png")
             images_b64.append(base64.b64encode(png_bytes).decode())
-            pix = None  # 메모리 해제
+            pix = None
 
         doc.close()
         return images_b64
@@ -249,8 +323,20 @@ STRICT RULES:
         fund_name = data.get("fund_name", filename)
         year = str(data.get("report_year", ""))
         summary = data.get("summary", "")
-        allocation = data.get("allocation", {})
-        found = data.get("allocation_found", bool(allocation))
+        raw_alloc = data.get("allocation", {})
+        found = data.get("allocation_found", bool(raw_alloc))
+
+        # 자산군 이름 정규화 + 음수/0 제거 + 같은 canonical로 합산
+        allocation = {}
+        for k, v in raw_alloc.items():
+            try:
+                val = float(v)
+            except (TypeError, ValueError):
+                continue
+            if val <= 0:
+                continue
+            canonical = normalize_asset_name(k)
+            allocation[canonical] = allocation.get(canonical, 0) + val
 
         if not found or not allocation:
             st.warning(f"'{filename}': 배분 데이터를 시각적으로 확인하지 못했습니다.")
