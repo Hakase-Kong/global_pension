@@ -139,29 +139,50 @@ def collect_news():
 # PDF 텍스트 추출 → 요약
 # =====================================================
 
-EXTRACT_PAGES = 8       # 파일당 최대 페이지 수
-EXTRACT_CHARS = 6000    # 페이지당 추출 문자 수 합산 한도
+EXTRACT_CHARS = 8000  # 최종 텍스트 한도
+
+# 배분 관련 핵심 키워드
+ALLOC_KEYWORDS = [
+    "asset mix", "asset allocation", "asset class", "portfolio mix",
+    "allocation", "equity", "fixed income", "infrastructure",
+    "private equity", "real assets", "credit", "% of net assets",
+    "net investments", "portfolio breakdown", "investment mix"
+]
 
 def extract_text_from_pdf(uploaded_file):
-    """pymupdf로 앞부분 텍스트만 빠르게 추출 후 메모리 해제"""
-    text = ""
+    """
+    전체 페이지를 스캔해 배분 관련 키워드가 많은 페이지를 우선 추출.
+    메모리: 페이지 텍스트만 저장, 원본 bytes 즉시 해제.
+    """
     try:
         file_bytes = uploaded_file.read()
         doc = fitz.open(stream=io.BytesIO(file_bytes), filetype="pdf")
-        del file_bytes  # 원본 bytes 즉시 해제
+        del file_bytes
 
+        # 전체 페이지 텍스트 + 키워드 점수 계산
+        scored = []
         for i, page in enumerate(doc):
-            if i >= EXTRACT_PAGES or len(text) >= EXTRACT_CHARS:
-                break
             t = page.get_text()
-            if t:
-                text += t + "\n"
+            if not t or len(t.strip()) < 50:
+                continue
+            score = sum(1 for kw in ALLOC_KEYWORDS if kw.lower() in t.lower())
+            scored.append((score, i, t))
 
         doc.close()
+
+        if not scored:
+            return ""
+
+        # 키워드 점수 높은 순으로 정렬, 상위 페이지 선택 (원래 순서 유지)
+        top_pages = sorted(scored, key=lambda x: -x[0])[:12]
+        top_pages = sorted(top_pages, key=lambda x: x[1])  # 페이지 번호 순 복원
+
+        text = "\n\n".join(t for _, _, t in top_pages)
+        return text[:EXTRACT_CHARS]
+
     except Exception as e:
         st.warning(f"텍스트 추출 실패: {e}")
-
-    return text[:EXTRACT_CHARS]
+        return ""
 
 
 def summarize_pdf(uploaded_file):
@@ -184,18 +205,21 @@ def summarize_pdf(uploaded_file):
 
 Return ONLY a JSON object with this exact structure:
 {{
-  "fund_name": "<official fund name, e.g. NZ Super Fund>",
-  "report_year": "<year, e.g. 2024>",
-  "summary": "<250-word summary covering: asset allocation changes, private market exposure (PE/Private Credit/Infrastructure/Real Estate/Secondaries), key risks and opportunities, liquidity stance>",
+  "fund_name": "<official fund name>",
+  "report_year": "<fiscal year end, e.g. 2024>",
+  "summary": "<200-word summary: allocation changes, private market exposure, risks, opportunities>",
   "allocation": {{
-    "<asset class>": <percentage as number>,
-    ...
-  }}
+    "<asset class label exactly as written in the report>": <percentage as number>
+  }},
+  "allocation_found": true or false
 }}
 
-For allocation, extract the actual percentage weights from the report.
-Use asset class names like: Public Equity, Private Equity, Fixed Income, Infrastructure, Real Estate, Private Credit, Cash, Alternatives, Secondaries.
-Only include asset classes explicitly mentioned with weights in the report."""
+STRICT RULES for allocation:
+1. Copy asset class names EXACTLY as written in the report (e.g. "Equity", "Fixed income", "Real assets").
+2. Use the percentage figures EXACTLY as printed — do NOT calculate, estimate, or infer.
+3. If the report shows dollar amounts only (no percentages), calculate % from the total shown.
+4. If you cannot find a clear allocation table or breakdown in the text, return "allocation": {{}} and "allocation_found": false.
+5. NEVER fabricate or guess numbers. Accuracy is critical."""
 
     try:
         response = client.chat.completions.create(
@@ -208,6 +232,14 @@ Only include asset classes explicitly mentioned with weights in the report."""
         year = str(data.get("report_year", ""))
         summary = data.get("summary", "")
         allocation = data.get("allocation", {})
+        found = data.get("allocation_found", bool(allocation))
+
+        if not found or not allocation:
+            st.warning(
+                f"'{filename}': 배분 데이터를 찾지 못했습니다. "
+                "해당 정보가 포함된 페이지가 보고서 앞부분에 없을 수 있습니다."
+            )
+            allocation = {}
 
     except Exception as e:
         st.warning(f"'{filename}' 요약 실패: {e}")
