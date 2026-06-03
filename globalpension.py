@@ -1,7 +1,9 @@
 import os
 import re
+import io
 import json
 import requests
+import fitz  # pymupdf
 import pandas as pd
 import streamlit as st
 import plotly.express as px
@@ -134,70 +136,68 @@ def collect_news():
     return articles
 
 # =====================================================
-# PDF → OpenAI Files API 업로드 후 요약
+# PDF 텍스트 추출 → 요약
 # =====================================================
 
+EXTRACT_PAGES = 8       # 파일당 최대 페이지 수
+EXTRACT_CHARS = 6000    # 페이지당 추출 문자 수 합산 한도
+
+def extract_text_from_pdf(uploaded_file):
+    """pymupdf로 앞부분 텍스트만 빠르게 추출 후 메모리 해제"""
+    text = ""
+    try:
+        file_bytes = uploaded_file.read()
+        doc = fitz.open(stream=io.BytesIO(file_bytes), filetype="pdf")
+        del file_bytes  # 원본 bytes 즉시 해제
+
+        for i, page in enumerate(doc):
+            if i >= EXTRACT_PAGES or len(text) >= EXTRACT_CHARS:
+                break
+            t = page.get_text()
+            if t:
+                text += t + "\n"
+
+        doc.close()
+    except Exception as e:
+        st.warning(f"텍스트 추출 실패: {e}")
+
+    return text[:EXTRACT_CHARS]
+
+
 def summarize_pdf(uploaded_file):
-    """
-    PDF를 OpenAI Files API에 업로드하고,
-    gpt-4o-mini로 핵심 투자 인사이트를 요약한 뒤
-    파일을 삭제합니다.
-    """
+    """텍스트 추출 → gpt-4o-mini로 요약"""
     if not client:
         return ""
 
-    file_bytes = uploaded_file.read()
     filename = uploaded_file.name
+    text = extract_text_from_pdf(uploaded_file)
+
+    if not text.strip():
+        return f"[{filename}] (텍스트 추출 실패)\n"
 
     try:
-        # 1) OpenAI에 파일 업로드
-        oai_file = client.files.create(
-            file=(filename, file_bytes, "application/pdf"),
-            purpose="user_data"
-        )
-        file_id = oai_file.id
-        del file_bytes  # 메모리 즉시 해제
-
-        # 2) 파일 요약 요청
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        {
-                            "type": "file",
-                            "file": {"file_id": file_id}
-                        },
-                        {
-                            "type": "text",
-                            "text": (
-                                "This is a pension fund annual report. "
-                                "In 300 words, summarize: "
-                                "(1) asset allocation changes, "
-                                "(2) private market exposure (PE/PC/infra/real estate/secondaries), "
-                                "(3) key risks and opportunities, "
-                                "(4) liquidity stance. "
-                                "Be concise and factual."
-                            )
-                        }
-                    ]
+                    "content": (
+                        f"Pension fund report excerpt from '{filename}':\n\n"
+                        f"{text}\n\n"
+                        "In 250 words, summarize: "
+                        "(1) asset allocation and changes, "
+                        "(2) private market exposure (PE/Private Credit/Infrastructure/Real Estate/Secondaries), "
+                        "(3) key risks and opportunities, "
+                        "(4) liquidity stance. "
+                        "Be concise and factual."
+                    )
                 }
             ]
         )
-
         summary = response.choices[0].message.content
-
     except Exception as e:
         st.warning(f"'{filename}' 요약 실패: {e}")
         summary = ""
-
-    finally:
-        # 3) OpenAI에서 파일 삭제
-        try:
-            client.files.delete(file_id)
-        except Exception:
-            pass
 
     return f"[{filename}]\n{summary}"
 
