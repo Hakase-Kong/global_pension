@@ -234,110 +234,97 @@ def normalize_asset_name(raw_name: str) -> str:
     return raw_name.strip().title()
 
 
-def get_top_pages_as_images(uploaded_file, max_pages=4, dpi=100):
+import re as _re
+
+def get_top_pages_text(uploaded_file, max_pages=8, max_chars=12000):
     """
-    키워드 점수가 높은 페이지를 이미지로 렌더링해 base64 목록 반환.
-    - 앞 3페이지는 무조건 포함 (커버·목차에 요약 배분이 있는 경우 대비)
-    - 이후 키워드 점수 높은 페이지 추가 선택
+    전체 PDF를 스캔 → 배분표 관련 키워드 점수가 높은 페이지의 텍스트를 반환.
+    텍스트 테이블(DETAILED ASSET MIX 등)은 이미지보다 텍스트 추출이 훨씬 정확함.
     """
     try:
         file_bytes = uploaded_file.read()
         doc = fitz.open(stream=io.BytesIO(file_bytes), filetype="pdf")
         del file_bytes
 
-        scored = {}
+        scored = []
         for i, page in enumerate(doc):
-            t = (page.get_text() or "").lower()
+            t = page.get_text() or ""
+            tl = t.lower()
             # 일반 키워드 점수
-            score = sum(1 for kw in ALLOC_KEYWORDS if kw in t)
-            # 고신뢰 키워드는 3배 가중치
-            score += sum(3 for kw in HIGH_VALUE_KEYWORDS if kw in t)
-            # 퍼센트 숫자 개수 (xx% 패턴) → 배분표일 가능성 높음
-            import re as _re
+            score = sum(1 for kw in ALLOC_KEYWORDS if kw in tl)
+            # 고신뢰 키워드 3배 가중치
+            score += sum(3 for kw in HIGH_VALUE_KEYWORDS if kw in tl)
+            # % 숫자 개수 보너스 (배분표에 많이 등장)
             pct_count = len(_re.findall(r'\d+\.?\d*\s*%', t))
-            score += min(pct_count, 10)  # 최대 10점 보너스
-            # 앞 2페이지 소폭 보너스 (커버/목차에 요약 배분 있는 경우)
-            if i < 2:
-                score += 2
-            scored[i] = score
+            score += min(pct_count, 15)
+            # 앞 3페이지 소폭 보너스 (요약 배분이 앞에 있는 경우)
+            if i < 3:
+                score += 3
+            if score > 0:
+                scored.append((score, i, t))
 
-        # 점수 상위 max_pages 페이지 선택, 페이지 순서대로 정렬
-        top_idxs = sorted(
-            sorted(scored.keys(), key=lambda i: -scored[i])[:max_pages]
+        # 점수 높은 순 정렬 → 상위 max_pages 선택 → 페이지 순서 복원
+        scored.sort(key=lambda x: -x[0])
+        top = sorted(scored[:max_pages], key=lambda x: x[1])
+
+        combined = "\n\n--- PAGE BREAK ---\n\n".join(
+            f"[Page {idx+1}]\n{txt}" for _, idx, txt in top
         )
-
-        images_b64 = []
-        mat = fitz.Matrix(dpi / 72, dpi / 72)
-        for idx in top_idxs:
-            pix = doc[idx].get_pixmap(matrix=mat, alpha=False)
-            png_bytes = pix.tobytes("png")
-            images_b64.append(base64.b64encode(png_bytes).decode())
-            pix = None
-
         doc.close()
-        return images_b64
+        return combined[:max_chars]
 
     except Exception as e:
-        st.warning(f"페이지 이미지 변환 실패: {e}")
-        return []
+        st.warning(f"텍스트 추출 실패: {e}")
+        return ""
 
 
 def summarize_pdf(uploaded_file):
     """
-    PDF 핵심 페이지를 이미지로 렌더링 → GPT-4o 비전으로 정확 추출.
+    배분표 관련 페이지의 텍스트를 추출 → gpt-4o-mini로 분석.
+    텍스트 테이블(DETAILED ASSET MIX 등)은 텍스트 추출이 비전보다 정확함.
     반환: (summary_text: str, fund_name: str, year: str, allocation: dict)
     """
     if not client:
         return "", "", "", {}
 
     filename = uploaded_file.name
-    images_b64 = get_top_pages_as_images(uploaded_file, max_pages=5, dpi=120)
+    page_text = get_top_pages_text(uploaded_file, max_pages=8, max_chars=12000)
 
-    if not images_b64:
-        return f"[{filename}] (이미지 변환 실패)\n", filename, "", {}
+    if not page_text.strip():
+        return f"[{filename}] (텍스트 추출 실패)\n", filename, "", {}
 
-    content = []
-    for b64 in images_b64:
-        content.append({
-            "type": "image_url",
-            "image_url": {
-                "url": f"data:image/png;base64,{b64}",
-                "detail": "high"
-            }
-        })
+    prompt = f"""Below are selected pages from a pension fund annual report (filename: '{filename}').
 
-    content.append({
-        "type": "text",
-        "text": f"""These are selected pages from a pension fund annual report (filename: '{filename}').
-
-Your task: find ONE primary asset allocation breakdown table or chart (the main portfolio mix showing all major asset classes and their weights).
+Your task: find the PRIMARY asset allocation table (e.g. "Detailed Asset Mix", "Net Investments", "Portfolio Overview") showing all major asset classes and their percentage weights.
 
 Return ONLY this JSON:
 {{
   "fund_name": "<full official fund name exactly as printed>",
   "report_year": "<fiscal year end as 4-digit string, e.g. '2024'>",
-  "summary": "<120-word summary: allocation, private markets, risks, opportunities>",
-  "allocation_source": "<briefly describe which table/chart you used, e.g. 'Net Investments table on page 2'>",
+  "summary": "<120-word summary: allocation changes, private markets exposure, risks, opportunities>",
+  "allocation_source": "<which table/section you used, e.g. 'Detailed Asset Mix table'>",
   "allocation": {{
-    "<asset class name exactly as labeled in that table/chart>": <% as number, positive only>
+    "<asset class name exactly as in the table>": <% as number, positive only>
   }},
   "allocation_found": true or false
 }}
 
-STRICT RULES — violations cause incorrect charts shown to users:
-1. Use ONLY ONE consistent breakdown table. Do NOT mix numbers from multiple tables.
-2. Percentages MUST come from the same table. If the table shows dollar amounts, divide each by the positive total to get %.
-3. EXCLUDE any item with a negative value (leverage, borrowing, funding costs).
-4. The allocation values should sum to approximately 100%. If they do not, you have mixed sources — pick just one table.
-5. If you cannot identify a single clear allocation table, return "allocation": {{}} and "allocation_found": false.
-6. NEVER estimate, infer, or fabricate. Only transcribe what is explicitly printed."""
-    })
+STRICT RULES:
+1. Use ONLY ONE table. Do NOT mix percentages from different tables.
+2. If the table shows dollar amounts only, calculate % = each item / sum of positive items × 100.
+3. EXCLUDE items with negative values (leverage, funding, borrowing).
+4. The allocation values must sum to approximately 100%.
+5. If no clear allocation table exists in the text, return "allocation": {{}} and "allocation_found": false.
+6. NEVER fabricate or estimate. Only use numbers explicitly in the text.
+
+PAGES:
+{page_text}"""
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             response_format={"type": "json_object"},
-            messages=[{"role": "user", "content": content}]
+            messages=[{"role": "user", "content": prompt}]
         )
         data = json.loads(response.choices[0].message.content)
         fund_name = data.get("fund_name", filename)
