@@ -2,6 +2,7 @@ import os
 import re
 import io
 import json
+import base64
 import requests
 import fitz  # pymupdf
 import pandas as pd
@@ -139,93 +140,107 @@ def collect_news():
 # PDF 텍스트 추출 → 요약
 # =====================================================
 
-EXTRACT_CHARS = 8000  # 최종 텍스트 한도
-
-# 배분 관련 핵심 키워드
 ALLOC_KEYWORDS = [
     "asset mix", "asset allocation", "asset class", "portfolio mix",
     "allocation", "equity", "fixed income", "infrastructure",
     "private equity", "real assets", "credit", "% of net assets",
-    "net investments", "portfolio breakdown", "investment mix"
+    "net investments", "portfolio breakdown", "investment mix",
+    "total portfolio", "net assets"
 ]
 
-def extract_text_from_pdf(uploaded_file):
+def get_top_pages_as_images(uploaded_file, max_pages=5, dpi=120):
     """
-    전체 페이지를 스캔해 배분 관련 키워드가 많은 페이지를 우선 추출.
-    메모리: 페이지 텍스트만 저장, 원본 bytes 즉시 해제.
+    키워드 점수가 높은 페이지를 이미지로 렌더링해 base64 목록 반환.
+    텍스트가 없는 차트/이미지 페이지도 정확하게 인식.
     """
     try:
         file_bytes = uploaded_file.read()
         doc = fitz.open(stream=io.BytesIO(file_bytes), filetype="pdf")
         del file_bytes
 
-        # 전체 페이지 텍스트 + 키워드 점수 계산
         scored = []
         for i, page in enumerate(doc):
-            t = page.get_text()
-            if not t or len(t.strip()) < 50:
-                continue
+            t = page.get_text() or ""
             score = sum(1 for kw in ALLOC_KEYWORDS if kw.lower() in t.lower())
-            scored.append((score, i, t))
+            # 텍스트가 거의 없어도(이미지 페이지) 앞 5페이지는 포함
+            if score > 0 or i < 5:
+                scored.append((score, i))
+
+        # 상위 페이지 선택
+        top_idxs = sorted(
+            sorted(scored, key=lambda x: -x[0])[:max_pages],
+            key=lambda x: x[1]  # 페이지 순서 복원
+        )
+
+        images_b64 = []
+        mat = fitz.Matrix(dpi / 72, dpi / 72)
+        for _, idx in top_idxs:
+            pix = doc[idx].get_pixmap(matrix=mat, alpha=False)
+            png_bytes = pix.tobytes("png")
+            images_b64.append(base64.b64encode(png_bytes).decode())
+            pix = None  # 메모리 해제
 
         doc.close()
-
-        if not scored:
-            return ""
-
-        # 키워드 점수 높은 순으로 정렬, 상위 페이지 선택 (원래 순서 유지)
-        top_pages = sorted(scored, key=lambda x: -x[0])[:12]
-        top_pages = sorted(top_pages, key=lambda x: x[1])  # 페이지 번호 순 복원
-
-        text = "\n\n".join(t for _, _, t in top_pages)
-        return text[:EXTRACT_CHARS]
+        return images_b64
 
     except Exception as e:
-        st.warning(f"텍스트 추출 실패: {e}")
-        return ""
+        st.warning(f"페이지 이미지 변환 실패: {e}")
+        return []
 
 
 def summarize_pdf(uploaded_file):
     """
-    텍스트 추출 → gpt-4o-mini로 요약 + 자산배분 JSON 추출.
-    반환: (summary_text: str, fund_name: str, allocation: dict)
+    PDF 핵심 페이지를 이미지로 렌더링 → GPT-4o 비전으로 정확 추출.
+    반환: (summary_text: str, fund_name: str, year: str, allocation: dict)
     """
     if not client:
         return "", "", "", {}
 
     filename = uploaded_file.name
-    text = extract_text_from_pdf(uploaded_file)
+    images_b64 = get_top_pages_as_images(uploaded_file, max_pages=5, dpi=120)
 
-    if not text.strip():
-        return f"[{filename}] (텍스트 추출 실패)\n", filename, "", {}
+    if not images_b64:
+        return f"[{filename}] (이미지 변환 실패)\n", filename, "", {}
 
-    prompt = f"""Pension fund report excerpt from '{filename}':
+    content = []
+    for b64 in images_b64:
+        content.append({
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/png;base64,{b64}",
+                "detail": "high"
+            }
+        })
 
-{text}
+    content.append({
+        "type": "text",
+        "text": f"""These are pages from pension fund annual report '{filename}'.
 
-Return ONLY a JSON object with this exact structure:
+Return ONLY this JSON:
 {{
   "fund_name": "<official fund name>",
-  "report_year": "<fiscal year end, e.g. 2024>",
-  "summary": "<200-word summary: allocation changes, private market exposure, risks, opportunities>",
+  "report_year": "<fiscal year end year, e.g. 2024>",
+  "summary": "<150-word summary: allocation, private markets, risks, opportunities>",
   "allocation": {{
-    "<asset class label exactly as written in the report>": <percentage as number>
+    "<asset class name exactly as shown>": <% as number>
   }},
   "allocation_found": true or false
 }}
 
-STRICT RULES for allocation:
-1. Copy asset class names EXACTLY as written in the report (e.g. "Equity", "Fixed income", "Real assets").
-2. Use the percentage figures EXACTLY as printed — do NOT calculate, estimate, or infer.
-3. If the report shows dollar amounts only (no percentages), calculate % from the total shown.
-4. If you cannot find a clear allocation table or breakdown in the text, return "allocation": {{}} and "allocation_found": false.
-5. NEVER fabricate or guess numbers. Accuracy is critical."""
+STRICT RULES:
+1. Copy asset class names EXACTLY as shown in charts/tables.
+2. Use ONLY percentages explicitly shown — read directly from the page.
+3. If amounts are in dollars, calculate % using the total shown.
+4. Exclude leverage/funding items (negative values).
+5. If no allocation data is visible, return "allocation": {{}} and "allocation_found": false.
+6. NEVER guess or fabricate numbers."""
+    })
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             response_format={"type": "json_object"},
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": content}]
         )
         data = json.loads(response.choices[0].message.content)
         fund_name = data.get("fund_name", filename)
@@ -235,15 +250,12 @@ STRICT RULES for allocation:
         found = data.get("allocation_found", bool(allocation))
 
         if not found or not allocation:
-            st.warning(
-                f"'{filename}': 배분 데이터를 찾지 못했습니다. "
-                "해당 정보가 포함된 페이지가 보고서 앞부분에 없을 수 있습니다."
-            )
+            st.warning(f"'{filename}': 배분 데이터를 시각적으로 확인하지 못했습니다.")
             allocation = {}
 
     except Exception as e:
-        st.warning(f"'{filename}' 요약 실패: {e}")
-        return f"[{filename}] 요약 실패\n", filename, "", {}
+        st.warning(f"'{filename}' 분석 실패: {e}")
+        return f"[{filename}] 분석 실패\n", filename, "", {}
 
     label = f"{fund_name} ({year})" if year else fund_name
     return f"[{label}]\n{summary}", fund_name, year, allocation
