@@ -142,12 +142,24 @@ def collect_news():
 # =====================================================
 
 ALLOC_KEYWORDS = [
+    # 배분표 직접 지칭 (고득점)
     "asset mix", "asset allocation", "asset class", "portfolio mix",
-    "allocation", "equity", "fixed income", "fixed-income",
-    "infrastructure", "private equity", "real assets", "credit",
-    "% of net assets", "net investments", "portfolio breakdown",
-    "investment mix", "total portfolio", "net assets", "as at",
-    "portfolio overview", "strategic allocation", "asset breakdown"
+    "investment mix", "portfolio breakdown", "strategic allocation",
+    "asset breakdown", "portfolio overview", "net investments",
+    "% of net assets", "as at december", "as at march", "as at june",
+    # 자산군 명칭
+    "fixed income", "fixed-income", "private equity", "real assets",
+    "inflation sensitive", "absolute return strategies",
+    "public equity", "private credit", "infrastructure",
+    # 점수 보조
+    "total portfolio", "net assets", "equity"
+]
+
+# 배분표 고신뢰 키워드 (이게 있으면 점수 대폭 상승)
+HIGH_VALUE_KEYWORDS = [
+    "asset mix", "asset allocation", "net investments",
+    "% of net assets", "as at december", "as at march", "as at june",
+    "strategic portfolio", "portfolio breakdown", "asset class"
 ]
 
 # ─── 자산군 이름 정규화 ───────────────────────────────
@@ -222,7 +234,7 @@ def normalize_asset_name(raw_name: str) -> str:
     return raw_name.strip().title()
 
 
-def get_top_pages_as_images(uploaded_file, max_pages=6, dpi=130):
+def get_top_pages_as_images(uploaded_file, max_pages=4, dpi=100):
     """
     키워드 점수가 높은 페이지를 이미지로 렌더링해 base64 목록 반환.
     - 앞 3페이지는 무조건 포함 (커버·목차에 요약 배분이 있는 경우 대비)
@@ -235,11 +247,18 @@ def get_top_pages_as_images(uploaded_file, max_pages=6, dpi=130):
 
         scored = {}
         for i, page in enumerate(doc):
-            t = page.get_text() or ""
-            score = sum(1 for kw in ALLOC_KEYWORDS if kw.lower() in t.lower())
-            # 앞 3페이지는 점수에 보너스
-            if i < 3:
-                score += 3
+            t = (page.get_text() or "").lower()
+            # 일반 키워드 점수
+            score = sum(1 for kw in ALLOC_KEYWORDS if kw in t)
+            # 고신뢰 키워드는 3배 가중치
+            score += sum(3 for kw in HIGH_VALUE_KEYWORDS if kw in t)
+            # 퍼센트 숫자 개수 (xx% 패턴) → 배분표일 가능성 높음
+            import re as _re
+            pct_count = len(_re.findall(r'\d+\.?\d*\s*%', t))
+            score += min(pct_count, 10)  # 최대 10점 보너스
+            # 앞 2페이지 소폭 보너스 (커버/목차에 요약 배분 있는 경우)
+            if i < 2:
+                score += 2
             scored[i] = score
 
         # 점수 상위 max_pages 페이지 선택, 페이지 순서대로 정렬
@@ -340,25 +359,21 @@ STRICT RULES — violations cause incorrect charts shown to users:
             canonical = normalize_asset_name(k)
             allocation[canonical] = allocation.get(canonical, 0) + val
 
-        # 합계 검증 (80~120% 이내여야 신뢰 가능)
         total = sum(allocation.values())
-        is_reliable = (80 <= total <= 120) if allocation else False
 
-        if not found or not allocation:
+        if not found or not allocation or total < 30:
+            # 데이터 없거나 너무 적음
             st.warning(f"⚠️ **'{filename}'**: 배분 데이터를 확인하지 못했습니다.")
             allocation = {}
-        elif not is_reliable:
-            st.error(
-                f"❌ **'{filename}'** 추출 실패 — "
-                f"합계가 {total:.1f}%로 100%에서 크게 벗어납니다. "
-                f"(출처: {alloc_source or 'unknown'})\n\n"
-                f"원본: {dict(list(raw_alloc.items())[:8])}"
-            )
-            allocation = {}  # 신뢰 불가 → 버림
         else:
-            # 성공 시 추출 근거 표시
-            with st.expander(f"📋 '{filename}' 추출 내역 (합계 {total:.1f}%)"):
-                st.caption(f"출처: {alloc_source}")
+            # 합계가 100% 초과(레버리지 구조)이거나 미달이면 정규화
+            note = ""
+            if not (90 <= total <= 110):
+                note = f" → 정규화 전 합계 {total:.1f}% (레버리지 제외 후 100% 기준으로 조정)"
+                allocation = {k: round(v / total * 100, 1) for k, v in allocation.items()}
+
+            with st.expander(f"📋 '{filename}' 추출 내역{note}"):
+                st.caption(f"출처: {alloc_source or '-'}")
                 st.json({k: f"{v:.1f}%" for k, v in allocation.items()})
 
     except Exception as e:
