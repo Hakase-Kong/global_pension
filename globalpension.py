@@ -1,6 +1,5 @@
 import os
 import re
-import base64
 import json
 import requests
 import pandas as pd
@@ -135,24 +134,79 @@ def collect_news():
     return articles
 
 # =====================================================
-# PDF
+# PDF → OpenAI Files API 업로드 후 요약
 # =====================================================
 
-def encode_pdf(uploaded_file):
-    """PDF를 base64로 인코딩해서 반환 (파싱 없이 OpenAI에 직접 전달)"""
+def summarize_pdf(uploaded_file):
+    """
+    PDF를 OpenAI Files API에 업로드하고,
+    gpt-4o-mini로 핵심 투자 인사이트를 요약한 뒤
+    파일을 삭제합니다.
+    """
+    if not client:
+        return ""
+
     file_bytes = uploaded_file.read()
-    b64 = base64.standard_b64encode(file_bytes).decode("utf-8")
-    del file_bytes
-    return b64, uploaded_file.name
+    filename = uploaded_file.name
+
+    try:
+        # 1) OpenAI에 파일 업로드
+        oai_file = client.files.create(
+            file=(filename, file_bytes, "application/pdf"),
+            purpose="user_data"
+        )
+        file_id = oai_file.id
+        del file_bytes  # 메모리 즉시 해제
+
+        # 2) 파일 요약 요청
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "file",
+                            "file": {"file_id": file_id}
+                        },
+                        {
+                            "type": "text",
+                            "text": (
+                                "This is a pension fund annual report. "
+                                "In 300 words, summarize: "
+                                "(1) asset allocation changes, "
+                                "(2) private market exposure (PE/PC/infra/real estate/secondaries), "
+                                "(3) key risks and opportunities, "
+                                "(4) liquidity stance. "
+                                "Be concise and factual."
+                            )
+                        }
+                    ]
+                }
+            ]
+        )
+
+        summary = response.choices[0].message.content
+
+    except Exception as e:
+        st.warning(f"'{filename}' 요약 실패: {e}")
+        summary = ""
+
+    finally:
+        # 3) OpenAI에서 파일 삭제
+        try:
+            client.files.delete(file_id)
+        except Exception:
+            pass
+
+    return f"[{filename}]\n{summary}"
+
 
 # =====================================================
-# OPENAI ANALYSIS
+# OPENAI 최종 분석
 # =====================================================
 
-def analyze_intelligence(
-    articles,
-    pdf_files=None
-):
+def analyze_intelligence(articles, report_summaries=""):
 
     if not client:
         return None
@@ -164,72 +218,46 @@ def analyze_intelligence(
         ]
     )
 
-    prompt = """You are CIO advisor for a Korean insurance company.
+    prompt = f"""You are CIO advisor for a Korean insurance company.
 
-Analyze the attached pension reports and news below:
-
+Based on the pension report summaries and news below, analyze:
 1. Global pension allocation shifts
-2. Private market trends
-3. Private credit opportunities
-4. Infrastructure demand
-5. Secondaries activity
-6. Liquidity concerns
+2. Private market trends (PE, Private Credit, Infrastructure, Real Estate, Secondaries)
+3. Key opportunities for Korean insurers
+4. Risk alerts
+5. Liquidity concerns
 
-Return ONLY JSON.
+Return ONLY this JSON structure:
+{{
+ "signals": {{
+   "Private Equity": "",
+   "Private Credit": "",
+   "Infrastructure": "",
+   "Real Estate": "",
+   "Secondaries": ""
+ }},
+ "brief": "",
+ "opportunities": [],
+ "risk_alerts": [],
+ "implications": ""
+}}
 
-{
- "signals": {
-   "Private Equity":"",
-   "Private Credit":"",
-   "Infrastructure":"",
-   "Real Estate":"",
-   "Secondaries":""
- },
- "brief":"",
- "opportunities":[],
- "risk_alerts":[],
- "implications":""
-}
+PENSION REPORT SUMMARIES:
+{report_summaries if report_summaries else "(No reports uploaded)"}
 
 NEWS:
-""" + news_text
-
-    # 메시지 content 구성: PDF 파일 + 텍스트 프롬프트
-    content = []
-
-    if pdf_files:
-        for b64_data, filename in pdf_files:
-            content.append({
-                "type": "file",
-                "file": {
-                    "filename": filename,
-                    "file_data": f"data:application/pdf;base64,{b64_data}"
-                }
-            })
-
-    content.append({
-        "type": "text",
-        "text": prompt
-    })
+{news_text}
+"""
 
     try:
 
         response = client.chat.completions.create(
-            model="gpt-4o",  # PDF 직접 처리는 gpt-4o 필요
-            response_format={
-                "type": "json_object"
-            },
-            messages=[
-                {
-                    "role": "user",
-                    "content": content
-                }
-            ]
+            model="gpt-4o-mini",
+            response_format={"type": "json_object"},
+            messages=[{"role": "user", "content": prompt}]
         )
 
-        return json.loads(
-            response.choices[0].message.content
-        )
+        return json.loads(response.choices[0].message.content)
 
     except Exception as e:
 
@@ -301,14 +329,10 @@ st.caption(
 st.sidebar.header("Settings")
 
 uploaded_reports = st.sidebar.file_uploader(
-    "Upload Pension Reports (최대 3개, 각 10MB 이하 권장)",
+    "Upload Pension Reports (PDF, 개수 제한 없음)",
     type=["pdf"],
     accept_multiple_files=True
 )
-
-if uploaded_reports and len(uploaded_reports) > 3:
-    st.sidebar.warning("PDF는 최대 3개까지만 처리됩니다.")
-    uploaded_reports = uploaded_reports[:3]
 
 run_button = st.sidebar.button(
     "🚀 Run Analysis",
@@ -321,17 +345,26 @@ run_button = st.sidebar.button(
 
 if run_button:
 
-    pdf_files = []
+    report_summaries = ""
 
-    if uploaded_reports:
+    if uploaded_reports and client:
 
-        with st.spinner(
-            "Encoding reports..."
-        ):
+        st.info(
+            f"{len(uploaded_reports)}개 PDF 요약 중... (파일당 약 10~20초 소요)"
+        )
 
-            for report in uploaded_reports:
-                b64, name = encode_pdf(report)
-                pdf_files.append((b64, name))
+        summary_bar = st.progress(0)
+
+        for i, report in enumerate(uploaded_reports):
+
+            with st.spinner(f"요약 중: {report.name}"):
+                summary = summarize_pdf(report)
+                report_summaries += summary + "\n\n"
+
+            summary_bar.progress((i + 1) / len(uploaded_reports))
+
+        summary_bar.empty()
+        st.success(f"{len(uploaded_reports)}개 PDF 요약 완료")
 
     with st.spinner(
         "Collecting news..."
@@ -353,7 +386,7 @@ if run_button:
 
             result = analyze_intelligence(
                 articles,
-                pdf_files if pdf_files else None
+                report_summaries
             )
 
     # ==========================================
