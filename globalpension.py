@@ -402,212 +402,153 @@ if run_button:
 
     if client:
 
-        with st.spinner(
-            "AI analyzing..."
-        ):
+        with st.spinner("AI analyzing..."):
+            result = analyze_intelligence(articles, report_summaries)
 
-            result = analyze_intelligence(
-                articles,
-                report_summaries
-            )
+    # session_state에 저장 (드롭다운 선택 시 유지)
+    st.session_state["result"] = result
+    st.session_state["articles"] = articles
+
+else:
+    # run_button이 눌리지 않았을 때 session_state에서 복원
+    result = st.session_state.get("result", None)
+    articles = st.session_state.get("articles", [])
+    fund_timeseries = st.session_state.get("fund_timeseries", {})
+
+
+# =====================================================
+# 결과 렌더링 (session_state 기반 → 드롭다운 선택해도 유지)
+# =====================================================
+
+if result or fund_timeseries or articles:
 
     # ==========================================
     # EXECUTIVE RADAR
     # ==========================================
 
-    st.header(
-        "📊 Executive Radar"
-    )
+    st.header("📊 Executive Radar")
 
     cols = st.columns(5)
-
-    assets = [
-        "Private Equity",
-        "Private Credit",
-        "Infrastructure",
-        "Real Estate",
-        "Secondaries"
-    ]
+    assets = ["Private Equity", "Private Credit", "Infrastructure", "Real Estate", "Secondaries"]
 
     for i, asset in enumerate(assets):
-
-        value = "-"
-
-        if result:
-            value = (
-                result
-                .get("signals", {})
-                .get(asset, "-")
-            )
-
-        cols[i].metric(
-            asset,
-            value
-        )
+        value = result.get("signals", {}).get(asset, "-") if result else "-"
+        cols[i].metric(asset, value)
 
     # ==========================================
     # AI BRIEF
     # ==========================================
 
-    st.header(
-        "🧠 AI Brief"
-    )
-
+    st.header("🧠 AI Brief")
     if result:
-
-        st.info(
-            result.get(
-                "brief",
-                ""
-            )
-        )
+        st.info(result.get("brief", ""))
 
     # ==========================================
     # OPPORTUNITIES
     # ==========================================
 
-    st.header(
-        "🎯 Opportunity Watchlist"
-    )
-
+    st.header("🎯 Opportunity Watchlist")
     if result:
-
-        for item in result.get(
-            "opportunities",
-            []
-        ):
+        for item in result.get("opportunities", []):
             st.success(item)
 
     # ==========================================
     # RISK ALERT
     # ==========================================
 
-    st.header(
-        "🚨 Risk Alerts"
-    )
-
+    st.header("🚨 Risk Alerts")
     if result:
-
-        alerts = result.get(
-            "risk_alerts",
-            []
-        )
-
+        alerts = result.get("risk_alerts", [])
         if alerts:
-
             for alert in alerts:
                 st.warning(alert)
-
         else:
-            st.success(
-                "No Risk Alerts"
-            )
+            st.success("No Risk Alerts")
 
     # ==========================================
     # INSURER IMPLICATIONS
     # ==========================================
 
-    st.header(
-        "🏢 Korean Insurer Implications"
-    )
-
+    st.header("🏢 Korean Insurer Implications")
     if result:
-
-        st.write(
-            result.get(
-                "implications",
-                ""
-            )
-        )
+        st.write(result.get("implications", ""))
 
     # ==========================================
-    # PENSION MONITOR (업로드 PDF 횡단면)
+    # PENSION MONITOR
     # ==========================================
 
     st.header("🏦 Pension Allocation Monitor")
 
     if fund_timeseries:
-        # 업로드된 각 펀드의 최신 연도 배분을 파이차트로 표시
         fund_names = list(fund_timeseries.keys())
-        selected_fund = st.selectbox("Select Pension Fund", fund_names)
-
+        selected_fund = st.selectbox("Select Pension Fund", fund_names, key="sel_fund")
         years_available = sorted(fund_timeseries[selected_fund].keys(), reverse=True)
-        selected_year = st.selectbox("Select Year", years_available)
+        selected_year = st.selectbox("Select Year", years_available, key="sel_year")
 
         alloc = fund_timeseries[selected_fund][selected_year]
+        total = sum(float(v) for v in alloc.values())
         df_pie = pd.DataFrame({
             "Asset": list(alloc.keys()),
-            "Weight": [float(v) for v in alloc.values()]
+            "Weight": [round(float(v) / total * 100, 1) if total else float(v) for v in alloc.values()]
         })
-
         fig = px.pie(
-            df_pie,
-            names="Asset",
-            values="Weight",
+            df_pie, names="Asset", values="Weight",
             title=f"{selected_fund} ({selected_year}) Allocation"
         )
         st.plotly_chart(fig, use_container_width=True)
-
     else:
         st.info("PDF를 업로드하고 Run Analysis를 실행하면 실제 배분 데이터가 표시됩니다.")
 
     # ==========================================
-    # ALLOCATION CHANGE TRACKER (시계열)
+    # ALLOCATION CHANGE TRACKER
     # ==========================================
 
     st.header("📈 Allocation Change Tracker")
 
     if fund_timeseries:
-        # 여러 연도 데이터가 있는 펀드만 필터
-        multi_year_funds = {
-            f: ydata for f, ydata in fund_timeseries.items()
-            if len(ydata) >= 2
-        }
+        multi_year_funds = {f: d for f, d in fund_timeseries.items() if len(d) >= 2}
 
         if multi_year_funds:
             tracker_fund = st.selectbox(
-                "펀드 선택 (시계열)",
-                list(multi_year_funds.keys()),
-                key="tracker_fund"
+                "펀드 선택 (시계열)", list(multi_year_funds.keys()), key="tracker_fund"
             )
             rows = []
             for year, alloc_dict in sorted(multi_year_funds[tracker_fund].items()):
+                total = sum(float(v) for v in alloc_dict.values())
                 for asset, weight in alloc_dict.items():
-                    rows.append({"Year": year, "Asset": asset, "Weight": float(weight)})
-
+                    rows.append({
+                        "Year": str(year),
+                        "Asset": asset,
+                        "Weight": round(float(weight) / total * 100, 1) if total else float(weight)
+                    })
             df_bar = pd.DataFrame(rows)
             bar = px.bar(
-                df_bar,
-                x="Year",
-                y="Weight",
-                color="Asset",
-                title=f"{tracker_fund} — Allocation Change Over Time",
-                barmode="stack"
+                df_bar, x="Year", y="Weight", color="Asset",
+                title=f"{tracker_fund} — Allocation Change Over Time (%)",
+                barmode="stack", range_y=[0, 100]
             )
+            bar.update_layout(yaxis_title="Weight (%)")
             st.plotly_chart(bar, use_container_width=True)
 
         else:
-            # 단일 연도만 있는 경우 → 펀드 간 횡단면 비교
             st.caption("같은 펀드의 여러 연도 보고서를 업로드하면 시계열 차트가 표시됩니다. 현재는 펀드 간 비교 차트를 표시합니다.")
             rows = []
             for fund_name, ydata in fund_timeseries.items():
                 for year, alloc_dict in ydata.items():
+                    total = sum(float(v) for v in alloc_dict.values())
                     for asset, weight in alloc_dict.items():
                         rows.append({
                             "Fund": f"{fund_name} ({year})",
                             "Asset": asset,
-                            "Weight": float(weight)
+                            "Weight": round(float(weight) / total * 100, 1) if total else float(weight)
                         })
             df_bar = pd.DataFrame(rows)
             bar = px.bar(
-                df_bar,
-                x="Fund",
-                y="Weight",
-                color="Asset",
-                title="Uploaded Funds — Asset Allocation Comparison",
-                barmode="stack"
+                df_bar, x="Fund", y="Weight", color="Asset",
+                title="Uploaded Funds — Asset Allocation Comparison (%)",
+                barmode="stack", range_y=[0, 100]
             )
-            bar.update_layout(xaxis_tickangle=-20)
+            bar.update_layout(xaxis_tickangle=-20, yaxis_title="Weight (%)")
             st.plotly_chart(bar, use_container_width=True)
 
     else:
@@ -617,28 +558,13 @@ if run_button:
     # NEWS
     # ==========================================
 
-    st.header(
-        "📰 Latest News"
-    )
+    st.header("📰 Latest News")
 
     for row in articles[:30]:
-
-        with st.expander(
-            row["title"]
-        ):
-
-            st.write(
-                row["description"]
-            )
-
+        with st.expander(row["title"]):
+            st.write(row["description"])
             if row["link"]:
-
-                st.markdown(
-                    f"[Original Article]({row['link']})"
-                )
+                st.markdown(f"[Original Article]({row['link']})")
 
 else:
-
-    st.info(
-        "Click 'Run Analysis' to start."
-    )
+    st.info("Click 'Run Analysis' to start.")
