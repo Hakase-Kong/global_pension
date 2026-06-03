@@ -170,13 +170,13 @@ def summarize_pdf(uploaded_file):
     반환: (summary_text: str, fund_name: str, allocation: dict)
     """
     if not client:
-        return "", "", {}
+        return "", "", "", {}
 
     filename = uploaded_file.name
     text = extract_text_from_pdf(uploaded_file)
 
     if not text.strip():
-        return f"[{filename}] (텍스트 추출 실패)\n", filename, {}
+        return f"[{filename}] (텍스트 추출 실패)\n", filename, "", {}
 
     prompt = f"""Pension fund report excerpt from '{filename}':
 
@@ -205,16 +205,16 @@ Only include asset classes explicitly mentioned with weights in the report."""
         )
         data = json.loads(response.choices[0].message.content)
         fund_name = data.get("fund_name", filename)
-        year = data.get("report_year", "")
+        year = str(data.get("report_year", ""))
         summary = data.get("summary", "")
         allocation = data.get("allocation", {})
-        label = f"{fund_name} ({year})" if year else fund_name
 
     except Exception as e:
         st.warning(f"'{filename}' 요약 실패: {e}")
-        return f"[{filename}] 요약 실패\n", filename, {}
+        return f"[{filename}] 요약 실패\n", filename, "", {}
 
-    return f"[{label}]\n{summary}", label, allocation
+    label = f"{fund_name} ({year})" if year else fund_name
+    return f"[{label}]\n{summary}", fund_name, year, allocation
 
 
 # =====================================================
@@ -361,7 +361,8 @@ run_button = st.sidebar.button(
 if run_button:
 
     report_summaries = ""
-    uploaded_allocations = {}  # {fund_label: {asset: weight}}
+    # {fund_name: {year: {asset: weight}}}
+    fund_timeseries = {}
 
     if uploaded_reports and client:
 
@@ -374,16 +375,18 @@ if run_button:
         for i, report in enumerate(uploaded_reports):
 
             with st.spinner(f"요약 중: {report.name}"):
-                summary, label, allocation = summarize_pdf(report)
+                summary, fund_name, year, allocation = summarize_pdf(report)
                 report_summaries += summary + "\n\n"
-                if allocation:
-                    uploaded_allocations[label] = allocation
+                if allocation and fund_name:
+                    if fund_name not in fund_timeseries:
+                        fund_timeseries[fund_name] = {}
+                    fund_timeseries[fund_name][year or "Unknown"] = allocation
 
             summary_bar.progress((i + 1) / len(uploaded_reports))
 
         summary_bar.empty()
         st.success(f"{len(uploaded_reports)}개 PDF 요약 완료")
-        st.session_state["uploaded_allocations"] = uploaded_allocations
+        st.session_state["fund_timeseries"] = fund_timeseries
 
     with st.spinner(
         "Collecting news..."
@@ -518,55 +521,83 @@ if run_button:
         )
 
     # ==========================================
-    # PENSION MONITOR
+    # PENSION MONITOR (업로드 PDF 횡단면)
     # ==========================================
 
     st.header("🏦 Pension Allocation Monitor")
 
-    # 업로드된 펀드 + 기본 샘플 통합
-    combined_alloc = {**allocation_data}
-    if uploaded_allocations:
-        combined_alloc.update(uploaded_allocations)
+    if fund_timeseries:
+        # 업로드된 각 펀드의 최신 연도 배분을 파이차트로 표시
+        fund_names = list(fund_timeseries.keys())
+        selected_fund = st.selectbox("Select Pension Fund", fund_names)
 
-    pension = st.selectbox(
-        "Select Pension Fund",
-        list(combined_alloc.keys())
-    )
+        years_available = sorted(fund_timeseries[selected_fund].keys(), reverse=True)
+        selected_year = st.selectbox("Select Year", years_available)
 
-    alloc = combined_alloc[pension]
+        alloc = fund_timeseries[selected_fund][selected_year]
+        df_pie = pd.DataFrame({
+            "Asset": list(alloc.keys()),
+            "Weight": [float(v) for v in alloc.values()]
+        })
 
-    df_pie = pd.DataFrame({
-        "Asset": list(alloc.keys()),
-        "Weight": list(alloc.values())
-    })
+        fig = px.pie(
+            df_pie,
+            names="Asset",
+            values="Weight",
+            title=f"{selected_fund} ({selected_year}) Allocation"
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-    fig = px.pie(
-        df_pie,
-        names="Asset",
-        values="Weight",
-        title=f"{pension} Allocation"
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("PDF를 업로드하고 Run Analysis를 실행하면 실제 배분 데이터가 표시됩니다.")
 
     # ==========================================
-    # ALLOCATION CHANGE TRACKER
+    # ALLOCATION CHANGE TRACKER (시계열)
     # ==========================================
 
     st.header("📈 Allocation Change Tracker")
 
-    if uploaded_allocations:
-        # 업로드된 펀드들의 배분을 펀드별 바 차트로 비교
-        rows = []
-        for fund_label, alloc_dict in uploaded_allocations.items():
-            for asset, weight in alloc_dict.items():
-                rows.append({
-                    "Fund": fund_label,
-                    "Asset": asset,
-                    "Weight": weight
-                })
+    if fund_timeseries:
+        # 여러 연도 데이터가 있는 펀드만 필터
+        multi_year_funds = {
+            f: ydata for f, ydata in fund_timeseries.items()
+            if len(ydata) >= 2
+        }
 
-        if rows:
+        if multi_year_funds:
+            tracker_fund = st.selectbox(
+                "펀드 선택 (시계열)",
+                list(multi_year_funds.keys()),
+                key="tracker_fund"
+            )
+            rows = []
+            for year, alloc_dict in sorted(multi_year_funds[tracker_fund].items()):
+                for asset, weight in alloc_dict.items():
+                    rows.append({"Year": year, "Asset": asset, "Weight": float(weight)})
+
+            df_bar = pd.DataFrame(rows)
+            bar = px.bar(
+                df_bar,
+                x="Year",
+                y="Weight",
+                color="Asset",
+                title=f"{tracker_fund} — Allocation Change Over Time",
+                barmode="stack"
+            )
+            st.plotly_chart(bar, use_container_width=True)
+
+        else:
+            # 단일 연도만 있는 경우 → 펀드 간 횡단면 비교
+            st.caption("같은 펀드의 여러 연도 보고서를 업로드하면 시계열 차트가 표시됩니다. 현재는 펀드 간 비교 차트를 표시합니다.")
+            rows = []
+            for fund_name, ydata in fund_timeseries.items():
+                for year, alloc_dict in ydata.items():
+                    for asset, weight in alloc_dict.items():
+                        rows.append({
+                            "Fund": f"{fund_name} ({year})",
+                            "Asset": asset,
+                            "Weight": float(weight)
+                        })
             df_bar = pd.DataFrame(rows)
             bar = px.bar(
                 df_bar,
@@ -580,23 +611,7 @@ if run_button:
             st.plotly_chart(bar, use_container_width=True)
 
     else:
-        # 업로드 없을 때 샘플 데이터
-        sample_change = pd.DataFrame({
-            "Year": ["2023","2023","2023","2024","2024","2024"],
-            "Asset": [
-                "Private Equity","Infrastructure","Fixed Income",
-                "Private Equity","Infrastructure","Fixed Income"
-            ],
-            "Weight": [14, 11, 30, 17, 15, 25]
-        })
-        bar = px.bar(
-            sample_change,
-            x="Year",
-            y="Weight",
-            color="Asset",
-            title="Allocation Shift (Sample)"
-        )
-        st.plotly_chart(bar, use_container_width=True)
+        st.info("같은 펀드의 여러 연도 보고서를 업로드하면 시계열 변화를 추적합니다.")
 
     # ==========================================
     # NEWS
