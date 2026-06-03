@@ -165,41 +165,56 @@ def extract_text_from_pdf(uploaded_file):
 
 
 def summarize_pdf(uploaded_file):
-    """텍스트 추출 → gpt-4o-mini로 요약"""
+    """
+    텍스트 추출 → gpt-4o-mini로 요약 + 자산배분 JSON 추출.
+    반환: (summary_text: str, fund_name: str, allocation: dict)
+    """
     if not client:
-        return ""
+        return "", "", {}
 
     filename = uploaded_file.name
     text = extract_text_from_pdf(uploaded_file)
 
     if not text.strip():
-        return f"[{filename}] (텍스트 추출 실패)\n"
+        return f"[{filename}] (텍스트 추출 실패)\n", filename, {}
+
+    prompt = f"""Pension fund report excerpt from '{filename}':
+
+{text}
+
+Return ONLY a JSON object with this exact structure:
+{{
+  "fund_name": "<official fund name, e.g. NZ Super Fund>",
+  "report_year": "<year, e.g. 2024>",
+  "summary": "<250-word summary covering: asset allocation changes, private market exposure (PE/Private Credit/Infrastructure/Real Estate/Secondaries), key risks and opportunities, liquidity stance>",
+  "allocation": {{
+    "<asset class>": <percentage as number>,
+    ...
+  }}
+}}
+
+For allocation, extract the actual percentage weights from the report.
+Use asset class names like: Public Equity, Private Equity, Fixed Income, Infrastructure, Real Estate, Private Credit, Cash, Alternatives, Secondaries.
+Only include asset classes explicitly mentioned with weights in the report."""
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        f"Pension fund report excerpt from '{filename}':\n\n"
-                        f"{text}\n\n"
-                        "In 250 words, summarize: "
-                        "(1) asset allocation and changes, "
-                        "(2) private market exposure (PE/Private Credit/Infrastructure/Real Estate/Secondaries), "
-                        "(3) key risks and opportunities, "
-                        "(4) liquidity stance. "
-                        "Be concise and factual."
-                    )
-                }
-            ]
+            response_format={"type": "json_object"},
+            messages=[{"role": "user", "content": prompt}]
         )
-        summary = response.choices[0].message.content
+        data = json.loads(response.choices[0].message.content)
+        fund_name = data.get("fund_name", filename)
+        year = data.get("report_year", "")
+        summary = data.get("summary", "")
+        allocation = data.get("allocation", {})
+        label = f"{fund_name} ({year})" if year else fund_name
+
     except Exception as e:
         st.warning(f"'{filename}' 요약 실패: {e}")
-        summary = ""
+        return f"[{filename}] 요약 실패\n", filename, {}
 
-    return f"[{filename}]\n{summary}"
+    return f"[{label}]\n{summary}", label, allocation
 
 
 # =====================================================
@@ -346,6 +361,7 @@ run_button = st.sidebar.button(
 if run_button:
 
     report_summaries = ""
+    uploaded_allocations = {}  # {fund_label: {asset: weight}}
 
     if uploaded_reports and client:
 
@@ -358,13 +374,16 @@ if run_button:
         for i, report in enumerate(uploaded_reports):
 
             with st.spinner(f"요약 중: {report.name}"):
-                summary = summarize_pdf(report)
+                summary, label, allocation = summarize_pdf(report)
                 report_summaries += summary + "\n\n"
+                if allocation:
+                    uploaded_allocations[label] = allocation
 
             summary_bar.progress((i + 1) / len(uploaded_reports))
 
         summary_bar.empty()
         st.success(f"{len(uploaded_reports)}개 PDF 요약 완료")
+        st.session_state["uploaded_allocations"] = uploaded_allocations
 
     with st.spinner(
         "Collecting news..."
@@ -502,93 +521,82 @@ if run_button:
     # PENSION MONITOR
     # ==========================================
 
-    st.header(
-        "🏦 Pension Allocation Monitor"
-    )
+    st.header("🏦 Pension Allocation Monitor")
+
+    # 업로드된 펀드 + 기본 샘플 통합
+    combined_alloc = {**allocation_data}
+    if uploaded_allocations:
+        combined_alloc.update(uploaded_allocations)
 
     pension = st.selectbox(
         "Select Pension Fund",
-        list(
-            allocation_data.keys()
-        )
+        list(combined_alloc.keys())
     )
 
-    alloc = allocation_data[pension]
+    alloc = combined_alloc[pension]
 
-    df = pd.DataFrame(
-        {
-            "Asset":
-            list(
-                alloc.keys()
-            ),
-            "Weight":
-            list(
-                alloc.values()
-            )
-        }
-    )
+    df_pie = pd.DataFrame({
+        "Asset": list(alloc.keys()),
+        "Weight": list(alloc.values())
+    })
 
     fig = px.pie(
-        df,
+        df_pie,
         names="Asset",
         values="Weight",
         title=f"{pension} Allocation"
     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
+    st.plotly_chart(fig, use_container_width=True)
 
     # ==========================================
-    # ALLOCATION CHANGE
+    # ALLOCATION CHANGE TRACKER
     # ==========================================
 
-    st.header(
-        "📈 Allocation Change Tracker"
-    )
+    st.header("📈 Allocation Change Tracker")
 
-    sample_change = pd.DataFrame(
-        {
-            "Year":[
-                "2023",
-                "2023",
-                "2023",
-                "2024",
-                "2024",
-                "2024"
+    if uploaded_allocations:
+        # 업로드된 펀드들의 배분을 펀드별 바 차트로 비교
+        rows = []
+        for fund_label, alloc_dict in uploaded_allocations.items():
+            for asset, weight in alloc_dict.items():
+                rows.append({
+                    "Fund": fund_label,
+                    "Asset": asset,
+                    "Weight": weight
+                })
+
+        if rows:
+            df_bar = pd.DataFrame(rows)
+            bar = px.bar(
+                df_bar,
+                x="Fund",
+                y="Weight",
+                color="Asset",
+                title="Uploaded Funds — Asset Allocation Comparison",
+                barmode="stack"
+            )
+            bar.update_layout(xaxis_tickangle=-20)
+            st.plotly_chart(bar, use_container_width=True)
+
+    else:
+        # 업로드 없을 때 샘플 데이터
+        sample_change = pd.DataFrame({
+            "Year": ["2023","2023","2023","2024","2024","2024"],
+            "Asset": [
+                "Private Equity","Infrastructure","Fixed Income",
+                "Private Equity","Infrastructure","Fixed Income"
             ],
-            "Asset":[
-                "Private Equity",
-                "Infrastructure",
-                "Fixed Income",
-                "Private Equity",
-                "Infrastructure",
-                "Fixed Income"
-            ],
-            "Weight":[
-                14,
-                11,
-                30,
-                17,
-                15,
-                25
-            ]
-        }
-    )
-
-    bar = px.bar(
-        sample_change,
-        x="Year",
-        y="Weight",
-        color="Asset",
-        title="Allocation Shift"
-    )
-
-    st.plotly_chart(
-        bar,
-        use_container_width=True
-    )
+            "Weight": [14, 11, 30, 17, 15, 25]
+        })
+        bar = px.bar(
+            sample_change,
+            x="Year",
+            y="Weight",
+            color="Asset",
+            title="Allocation Shift (Sample)"
+        )
+        st.plotly_chart(bar, use_container_width=True)
 
     # ==========================================
     # NEWS
