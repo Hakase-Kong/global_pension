@@ -28,7 +28,7 @@ FUNDS = ["국민연금(NPS)", "CPPIB", "CalPERS", "OTPP", "PSP Investments"]
 FUND_META = {
     "국민연금(NPS)": {
         "country": "🇰🇷 Korea", "type": "National Pension",
-        "aum": "1,150조원 (~$850B USD)", "aum_usd": 850,
+        "aum": "1,212.9조원 (2024말)", "aum_usd": 880,
         "fy_end": "Dec 31", "currency": "KRW",
         "description": "세계 3위 규모 공적연금. 보건복지부 산하 공단이 운용. 2040년대 기금 소진 우려로 대체투자 확대 추진 중.",
         "strategy": "대체투자 비중 단계적 확대(목표 17%). 해외 사모·인프라·크레딧 중심. 국내 부동산 비중 축소.",
@@ -67,14 +67,17 @@ FUND_META = {
 # ── 출처: 각 기관 연차보고서 원문 (CPPIB FY2026/FY2025재분류, OTPP 2025/2024,
 #    CalPERS FY2025/FY2024, PSP FY2025/FY2024). 매핑 규칙은 ALLOC_TS 주석 참조.
 ALLOC = {
+    # NPS: 연차보고서 기준(2024/2023). 대체 세부비중 = '대체투자 내 비중 × 대체 비중'으로 환산.
+    #      PC=사모대출(전술프로그램 내), Infra에 슈퍼코어 인프라 포함,
+    #      HF/Other=헤지펀드+멀티에셋, FI에 단기자금·복지부문 포함.
     "국민연금(NPS)": {
-        "Private Equity":    (5.5,  4.8),
-        "Private Credit":    (2.8,  2.1),
-        "Infrastructure":    (4.2,  3.9),
-        "Real Estate":       (4.0,  4.5),
-        "Hedge Fund/Other":  (2.5,  2.4),
-        "Public Equity":    (49.5, 50.1),
-        "Fixed Income":     (31.5, 32.2),
+        "Private Equity":    (6.3,  5.7),
+        "Private Credit":    (0.6,  0.6),
+        "Infrastructure":    (4.5,  4.2),
+        "Real Estate":       (4.8,  4.7),
+        "Hedge Fund/Other":  (0.9,  0.7),
+        "Public Equity":    (47.1, 45.2),
+        "Fixed Income":     (36.0, 38.8),
     },
     # CPPIB: FY2026부터 부동산·인프라·에너지가 'Real Assets'로 통합 →
     #        RA 섹터구성(부동산29%/인프라46%/에너지25%)으로 분해, 에너지는 Infra에 포함.
@@ -129,7 +132,7 @@ ALL_CLASSES  = ["Private Equity","Private Credit","Infrastructure","Real Estate"
 # 5개년 총펀드 순수익률 추이 (%, 각 연차보고서 원문)
 # CPPIB·PSP: 3월말 회계연도 / CalPERS: 6월말 / OTPP: 12월말
 RETURNS_TS = {
-    "국민연금(NPS)": {"2020":9.7,"2021":10.8,"2022":-8.2,"2023":13.6,"2024":7.3},
+    "국민연금(NPS)": {"2020":9.7,"2021":10.8,"2022":-8.2,"2023":13.6,"2024":15.0},
     "CPPIB":         {"FY2022":6.8,"FY2023":1.3,"FY2024":8.0,"FY2025":9.3,"FY2026":7.8},
     "CalPERS":       {"FY2021":21.3,"FY2022":-6.1,"FY2023":5.8,"FY2024":9.3,"FY2025":11.6},
     "OTPP":          {"2021":11.1,"2022":4.0,"2023":1.9,"2024":9.4,"2025":6.7},
@@ -138,14 +141,16 @@ RETURNS_TS = {
 
 # 1년 벤치마크 수익률 (%, 공시 연도만; CalPERS는 초과성과 bp에서 역산한 파생값)
 BENCHMARK_TS = {
+    "국민연금(NPS)": {"2020":8.59,"2021":10.82,"2022":-8.07,"2023":14.10,"2024":15.54},  # 금융부문 TWR 기준
     "OTPP":          {"2021":8.8,"2022":2.3,"2023":8.7,"2024":12.9,"2025":11.7},
     "PSP Investments":{"FY2021":16.5,"FY2022":9.4,"FY2023":-2.8,"FY2024":6.4,"FY2025":17.4},
     "CalPERS":       {"FY2022":-7.0,"FY2023":5.55,"FY2025":9.9},
     # CPPIB는 1년 벤치마크 미공시 → 부가가치(VA): FY22 +2.1%p, FY23 +1.3%p, FY26 -5.4%p
 }
 
-# 순자산/AUM 시계열 (현지통화 10억 단위)
+# 순자산/AUM 시계열 (현지통화 10억 단위, NPS는 조원)
 AUM_TS = {
+    "국민연금(NPS)": {"2020":833.7,"2021":948.7,"2022":890.5,"2023":1035.8,"2024":1212.9},
     "CPPIB":         {"FY2022":539.3,"FY2023":570.0,"FY2024":632.3,"FY2025":714.4,"FY2026":793.3},
     "OTPP":          {"2021":241.6,"2022":247.2,"2023":247.5,"2024":266.3,"2025":279.4},
     "CalPERS":       {"FY2021":485.0,"FY2022":444.0,"FY2023":465.9,"FY2024":551.4,"FY2025":634.6},
@@ -157,6 +162,15 @@ AUM_TS = {
 #       OTPP는 이펙티브 믹스(레버리지 포함, 합계>100%), PE=사모주식+벤처그로스.
 #       PSP FI=채권+현금, HF/Other=천연자원+보완PF. CalPERS는 보유내역 합산 파생값.
 ALLOC_TS = {
+    # NPS: 대체 세부 = 대체투자 내 비중 × 대체 비중 환산. PC(사모대출)는 '22년부터 분리 공시
+    #      ('20~'21은 PE에 포함). HF/Other=헤지펀드+멀티에셋. FI에 단기자금 포함.
+    "국민연금(NPS)": {
+        "2020": {"Private Equity":4.0,"Private Credit":0.0,"Infrastructure":3.1,"Real Estate":3.8,"Hedge Fund/Other":0.0,"Public Equity":44.3,"Fixed Income":44.7},
+        "2021": {"Private Equity":5.0,"Private Credit":0.0,"Infrastructure":3.2,"Real Estate":4.0,"Hedge Fund/Other":0.4,"Public Equity":44.5,"Fixed Income":43.0},
+        "2022": {"Private Equity":5.7,"Private Credit":0.5,"Infrastructure":4.3,"Real Estate":5.2,"Hedge Fund/Other":0.7,"Public Equity":41.1,"Fixed Income":42.3},
+        "2023": {"Private Equity":5.7,"Private Credit":0.6,"Infrastructure":4.2,"Real Estate":4.7,"Hedge Fund/Other":0.7,"Public Equity":45.2,"Fixed Income":38.8},
+        "2024": {"Private Equity":6.3,"Private Credit":0.6,"Infrastructure":4.5,"Real Estate":4.8,"Hedge Fund/Other":0.9,"Public Equity":47.1,"Fixed Income":36.0},
+    },
     "CPPIB": {
         "FY2022": {"Private Equity":32,"Private Credit":16,"Infrastructure":9,"Real Estate":9,"Hedge Fund/Other":0,"Public Equity":27,"Fixed Income":7},
         "FY2023": {"Private Equity":33,"Private Credit":13,"Infrastructure":9,"Real Estate":9,"Hedge Fund/Other":0,"Public Equity":24,"Fixed Income":12},
@@ -197,7 +211,7 @@ ASSET_SUMMARY = {
 }
 
 RECENT_ISSUES = {
-    "국민연금(NPS)": "2024 대체투자 목표비중 17% 설정. 해외 크레딧 신규 위탁운용사 선정 추진. 국내 부동산 손실 반영 지속.",
+    "국민연금(NPS)": "2024 수익률 15.0%로 2년 연속 사상 최고. 대체투자 비중 17.1%(206.9조원) 도달. 해외주식 +34.6% 고수익, 국내주식 -7.0% 부진. 인프라 +23.0%·사모 +21.2% 호조.",
     "CPPIB":         "FY2026 7.8% 순수익. 지속가능에너지(Sust. Energy) +23.2%. Active Equities -$3.5B 손실.",
     "CalPERS":       "FY2025 11.6% 수익률, 벤치마크 +1.7%p 초과. 펀딩비율 79% 개선. PE 목표비중 상향 논의.",
     "OTPP":          "2025 6.7% 수익(벤치마크 -5.0%p). Private Equity -5.3% 언더퍼폼. Venture Growth +30.2%.",
@@ -407,7 +421,9 @@ st.markdown("""
 .metric-card {
     background:#1a2535; border-radius:10px; padding:16px 18px;
     border-left:4px solid #3b82f6; margin-bottom:8px;
+    color:#e2e8f0; line-height:1.7;
 }
+.metric-card b { color:#f8fafc; }
 .fund-header {
     background:linear-gradient(90deg,#1a2535,#0f1923);
     border-radius:8px; padding:14px 20px; margin-bottom:12px;
@@ -462,12 +478,14 @@ if page == "🏠 Radar 메인":
         with cols[i]:
             st.markdown(f"""
 <div class='metric-card'>
-<b style='font-size:14px'>{fund}</b><br>
-<span style='color:#94a3b8;font-size:12px'>{m['country']} | {m['type']}</span><br>
-<span style='font-size:13px'>AUM: <b>{m['aum']}</b></span><br>
-<span style='font-size:13px'>대체투자: <b style='color:#90caf9'>{alt_cur:.1f}%</b>
- <span style='font-size:11px;color:{"#81c995" if delta>0 else "#f48fb1"}'>{dstr}</span></span>
+<b style='font-size:15px;color:#f8fafc'>{fund}</b><br>
+<span style='color:#aab8c8;font-size:12px'>{m['country']} | {m['type']}</span><br>
+<span style='font-size:13px;color:#cbd5e1'>AUM: <b style='color:#f8fafc'>{m['aum']}</b></span><br>
+<span style='font-size:13px;color:#cbd5e1'>대체투자: <b style='color:#90caf9;font-size:15px'>{alt_cur:.1f}%</b>
+ <span style='font-size:12px;color:{"#81c995" if delta>0 else "#f48fb1"}'>{dstr}</span></span>
 </div>""", unsafe_allow_html=True)
+
+    st.caption("※ OTPP는 레버리지 포함 이펙티브 자산믹스 기준이라 대체투자 비중이 타 기관 대비 높게 표시됨. NPS 대체 세부비중은 보고서 대체투자 구성비에서 환산.")
 
     st.divider()
 
@@ -485,38 +503,38 @@ if page == "🏠 Radar 메인":
     df_matrix = pd.DataFrame(matrix_rows).set_index("자산군")
 
     # 표 렌더링
-    header_html = "<table style='width:100%;border-collapse:collapse;font-size:13px'>"
-    header_html += "<tr style='background:#1a2535'><th style='padding:8px;text-align:left;color:#94a3b8'>자산군</th>"
+    header_html = "<table style='width:100%;border-collapse:collapse;font-size:14px'>"
+    header_html += "<tr style='background:#1a2535'><th style='padding:10px;text-align:left;color:#cbd5e1'>자산군</th>"
     for fund in FUNDS:
-        header_html += f"<th style='padding:8px;text-align:center;color:#e2e8f0'>{fund}</th>"
-    header_html += "<th style='padding:8px;text-align:center;color:#94a3b8'>자산군 특징</th></tr>"
+        header_html += f"<th style='padding:10px;text-align:center;color:#f8fafc'>{fund}</th>"
+    header_html += "<th style='padding:10px;text-align:center;color:#cbd5e1'>자산군 특징</th></tr>"
 
     is_alt = {a: (a in ALT_CLASSES) for a in ALL_CLASSES}
     for asset in ALL_CLASSES:
         bg = "#111827" if is_alt[asset] else "#0d1117"
         border = "border-left:3px solid #3b82f6;" if is_alt[asset] else ""
         header_html += f"<tr style='background:{bg};{border}'>"
-        header_html += f"<td style='padding:8px;font-weight:bold;color:#e2e8f0'>{asset}</td>"
+        header_html += f"<td style='padding:10px;font-weight:bold;color:#f1f5f9'>{asset}</td>"
         for fund in FUNDS:
             cur, pre = ALLOC[fund].get(asset, (None, None))
             arrow    = delta_arrow(cur, pre)
             color    = "#90caf9" if is_alt[asset] else "#e2e8f0"
-            ac       = "#81c995" if (cur and pre and cur>pre+0.4) else ("#f48fb1" if (cur and pre and cur<pre-0.4) else "#94a3b8")
-            cell = f"{pct_badge(cur)}<br><span style='font-size:10px;color:{ac}'>{arrow}</span>"
-            header_html += f"<td style='padding:8px;text-align:center;color:{color}'>{cell}</td>"
+            ac       = "#81c995" if (cur and pre and cur>pre+0.4) else ("#f48fb1" if (cur and pre and cur<pre-0.4) else "#aab8c8")
+            cell = f"<b>{pct_badge(cur)}</b><br><span style='font-size:11px;color:{ac}'>{arrow}</span>"
+            header_html += f"<td style='padding:10px;text-align:center;color:{color}'>{cell}</td>"
         summ = ASSET_SUMMARY.get(asset,"")[:60]+"…" if len(ASSET_SUMMARY.get(asset,""))>60 else ASSET_SUMMARY.get(asset,"")
-        header_html += f"<td style='padding:8px;font-size:11px;color:#64748b'>{summ}</td>"
+        header_html += f"<td style='padding:10px;font-size:12px;color:#8fa3b8'>{summ}</td>"
         header_html += "</tr>"
 
     # 대체투자 합산 행
     header_html += "<tr style='background:#1e2a3a;border-top:2px solid #3b82f6'>"
-    header_html += "<td style='padding:8px;font-weight:bold;color:#90caf9'>대체투자 합계</td>"
+    header_html += "<td style='padding:10px;font-weight:bold;color:#90caf9'>대체투자 합계</td>"
     for fund in FUNDS:
         alt_cur = sum(ALLOC[fund][a][0] for a in ALT_CLASSES if ALLOC[fund].get(a,(None,None))[0] is not None)
         alt_pre = sum(ALLOC[fund][a][1] for a in ALT_CLASSES if ALLOC[fund].get(a,(None,None))[1] is not None)
         arr = delta_arrow(alt_cur, alt_pre)
-        ac  = "#81c995" if alt_cur>alt_pre+0.2 else ("#f48fb1" if alt_cur<alt_pre-0.2 else "#94a3b8")
-        header_html += f"<td style='padding:8px;text-align:center;font-weight:bold;color:#90caf9'>{alt_cur:.1f}%<br><span style='font-size:10px;color:{ac}'>{arr}</span></td>"
+        ac  = "#81c995" if alt_cur>alt_pre+0.2 else ("#f48fb1" if alt_cur<alt_pre-0.2 else "#aab8c8")
+        header_html += f"<td style='padding:10px;text-align:center;font-weight:bold;font-size:15px;color:#90caf9'>{alt_cur:.1f}%<br><span style='font-size:11px;color:{ac}'>{arr}</span></td>"
     header_html += "<td></td></tr></table>"
 
     st.markdown(header_html, unsafe_allow_html=True)
