@@ -35,28 +35,28 @@ FUND_META = {
     },
     "CPPIB": {
         "country": "🇨🇦 Canada", "type": "Sovereign Pension",
-        "aum": "C$793B", "aum_usd": 587,
+        "aum": "C$793.3B (FY2026)", "aum_usd": 587,
         "fy_end": "Mar 31", "currency": "CAD",
         "description": "캐나다 연방 공무원·군인·경찰 연금 운용. 캐나다 5대 연기금 중 최대 규모. 액티브 알파 전략 추구.",
         "strategy": "Private Equity·Credit·Real Assets 각 20% 이상. 미국 비중 확대(48%). 지속가능에너지 인프라 신설.",
     },
     "CalPERS": {
         "country": "🇺🇸 USA", "type": "Public Pension",
-        "aum": "$634B", "aum_usd": 634,
+        "aum": "$634.6B (FY2025)", "aum_usd": 635,
         "fy_end": "Jun 30", "currency": "USD",
         "description": "미국 최대 주 공무원 연금. 캘리포니아 주정부 직원 약 200만명 대상. 펀딩비율 79%(2025).",
         "strategy": "PE 비중 17%→확대 방향. 사모채권(Private Debt) 신설 카테고리. 리얼에셋 스트림라인.",
     },
     "OTPP": {
         "country": "🇨🇦 Canada", "type": "Teacher Pension",
-        "aum": "C$279B", "aum_usd": 207,
+        "aum": "C$279.4B (2025)", "aum_usd": 207,
         "fy_end": "Dec 31", "currency": "CAD",
         "description": "온타리오주 교원 연금. 13년 연속 완전적립. Venture Growth 카테고리 신설.",
         "strategy": "공모주식 비중 상향(14%→18%). 인프라 축소(17%→13%). Venture Growth 확대(4%→6%).",
     },
     "PSP Investments": {
         "country": "🇨🇦 Canada", "type": "Federal Pension",
-        "aum": "C$300B", "aum_usd": 222,
+        "aum": "C$299.7B (FY2025)", "aum_usd": 222,
         "fy_end": "Mar 31", "currency": "CAD",
         "description": "캐나다 연방 공무원·군인·RCMP 연금. 오타와 본사, 몬트리올·뉴욕·런던·홍콩 오피스.",
         "strategy": "자본시장 48.7%(비중 최대). 크레딧·자연자원 확대. 부동산 오피스 손실 반영 완료.",
@@ -64,6 +64,8 @@ FUND_META = {
 }
 
 # 자산배분: {펀드: {자산군: (현재%, 전년%)}}
+# ── 출처: 각 기관 연차보고서 원문 (CPPIB FY2026/FY2025재분류, OTPP 2025/2024,
+#    CalPERS FY2025/FY2024, PSP FY2025/FY2024). 매핑 규칙은 ALLOC_TS 주석 참조.
 ALLOC = {
     "국민연금(NPS)": {
         "Private Equity":    (5.5,  4.8),
@@ -74,41 +76,49 @@ ALLOC = {
         "Public Equity":    (49.5, 50.1),
         "Fixed Income":     (31.5, 32.2),
     },
+    # CPPIB: FY2026부터 부동산·인프라·에너지가 'Real Assets'로 통합 →
+    #        RA 섹터구성(부동산29%/인프라46%/에너지25%)으로 분해, 에너지는 Infra에 포함.
+    #        전년(FY2025)은 FY2026 보고서의 재분류 비교치 기준.
     "CPPIB": {
-        "Private Equity":   (22.0, 29.0),
+        "Private Equity":   (22.0, 25.0),
         "Private Credit":   ( 9.0, 11.0),
-        "Infrastructure":   (11.2,  8.7),
-        "Real Estate":       (5.0,  6.8),
-        "Hedge Fund/Other":  (2.0,  None),
-        "Public Equity":    (36.0, 29.0),
+        "Infrastructure":   (14.2, 14.9),
+        "Real Estate":       (5.8,  6.1),
+        "Hedge Fund/Other":  (0.0,  0.0),
+        "Public Equity":    (36.0, 28.0),
         "Fixed Income":     (13.0, 15.0),
     },
+    # CalPERS: 보유내역(AIR) 시장가치 합산 파생값. Infra에 산림 포함, HF/Other=현금성+파생.
     "CalPERS": {
-        "Private Equity":   (15.6, 13.0),
-        "Private Credit":   ( 3.4,  1.5),
-        "Infrastructure":   ( 3.3,  3.0),
+        "Private Equity":   (15.7, 14.1),
+        "Private Credit":   ( 3.4,  2.6),
+        "Infrastructure":   ( 3.3,  3.1),
         "Real Estate":       (7.4,  8.5),
-        "Hedge Fund/Other":  (0.0,  0.0),
-        "Public Equity":    (38.4, 42.0),
-        "Fixed Income":     (27.0, 28.0),
+        "Hedge Fund/Other":  (3.4,  3.3),
+        "Public Equity":    (39.6, 41.3),
+        "Fixed Income":     (27.1, 27.2),
     },
+    # OTPP: 이펙티브 자산믹스(레버리지 포함, 합계>100%). PE=사모주식+벤처그로스,
+    #       FI=채권+실질금리상품, HF/Other=절대수익전략.
+    #       원자재·천연자원·인플레헤지·펀딩(-)은 제외.
     "OTPP": {
-        "Private Equity":   (19.0, 23.0),
-        "Private Credit":   ( 0.0,  0.0),
+        "Private Equity":   (25.0, 27.0),
+        "Private Credit":   (14.0, 14.0),
         "Infrastructure":   (13.0, 17.0),
         "Real Estate":      (10.0, 11.0),
         "Hedge Fund/Other":  (9.0,  9.0),
         "Public Equity":    (18.0, 14.0),
         "Fixed Income":     (23.0, 30.0),
     },
+    # PSP: FI=채권+현금, HF/Other=천연자원+보완포트폴리오.
     "PSP Investments": {
         "Private Equity":   (13.6, 15.3),
         "Private Credit":   (10.1,  9.9),
         "Infrastructure":   (10.7, 13.0),
         "Real Estate":       (8.9, 10.3),
-        "Hedge Fund/Other":  (0.0,  0.0),
-        "Public Equity":    (48.7, 42.1),
-        "Fixed Income":     ( 0.0,  0.0),
+        "Hedge Fund/Other":  (6.5,  6.6),
+        "Public Equity":    (26.6, 21.0),
+        "Fixed Income":     (23.7, 23.9),
     },
 }
 
@@ -116,13 +126,65 @@ ALT_CLASSES  = ["Private Equity","Private Credit","Infrastructure","Real Estate"
 ALL_CLASSES  = ["Private Equity","Private Credit","Infrastructure","Real Estate",
                 "Hedge Fund/Other","Public Equity","Fixed Income"]
 
-# 3~5년 수익률 추이
+# 5개년 총펀드 순수익률 추이 (%, 각 연차보고서 원문)
+# CPPIB·PSP: 3월말 회계연도 / CalPERS: 6월말 / OTPP: 12월말
 RETURNS_TS = {
     "국민연금(NPS)": {"2020":9.7,"2021":10.8,"2022":-8.2,"2023":13.6,"2024":7.3},
-    "CPPIB":         {"2021":4.0,"2022":6.8,"2023":1.3,"2024":8.0,"2025":9.3},
-    "CalPERS":       {"2021":21.3,"2022":-6.1,"2023":8.7,"2024":9.3,"2025":11.6},
-    "OTPP":          {"2021":11.0,"2022":4.2,"2023":1.9,"2024":9.4,"2025":6.7},
-    "PSP Investments":{"2021":11.7,"2022":8.0,"2023":9.0,"2024":7.2,"2025":12.6},
+    "CPPIB":         {"FY2022":6.8,"FY2023":1.3,"FY2024":8.0,"FY2025":9.3,"FY2026":7.8},
+    "CalPERS":       {"FY2021":21.3,"FY2022":-6.1,"FY2023":5.8,"FY2024":9.3,"FY2025":11.6},
+    "OTPP":          {"2021":11.1,"2022":4.0,"2023":1.9,"2024":9.4,"2025":6.7},
+    "PSP Investments":{"FY2021":18.4,"FY2022":10.9,"FY2023":4.4,"FY2024":7.2,"FY2025":12.6},
+}
+
+# 1년 벤치마크 수익률 (%, 공시 연도만; CalPERS는 초과성과 bp에서 역산한 파생값)
+BENCHMARK_TS = {
+    "OTPP":          {"2021":8.8,"2022":2.3,"2023":8.7,"2024":12.9,"2025":11.7},
+    "PSP Investments":{"FY2021":16.5,"FY2022":9.4,"FY2023":-2.8,"FY2024":6.4,"FY2025":17.4},
+    "CalPERS":       {"FY2022":-7.0,"FY2023":5.55,"FY2025":9.9},
+    # CPPIB는 1년 벤치마크 미공시 → 부가가치(VA): FY22 +2.1%p, FY23 +1.3%p, FY26 -5.4%p
+}
+
+# 순자산/AUM 시계열 (현지통화 10억 단위)
+AUM_TS = {
+    "CPPIB":         {"FY2022":539.3,"FY2023":570.0,"FY2024":632.3,"FY2025":714.4,"FY2026":793.3},
+    "OTPP":          {"2021":241.6,"2022":247.2,"2023":247.5,"2024":266.3,"2025":279.4},
+    "CalPERS":       {"FY2021":485.0,"FY2022":444.0,"FY2023":465.9,"FY2024":551.4,"FY2025":634.6},
+    "PSP Investments":{"FY2021":204.5,"FY2022":230.5,"FY2023":243.7,"FY2024":264.9,"FY2025":299.7},
+}
+
+# 자산배분 5개년 시계열 (% of net assets, 7개 자산군 매핑 — 각 연도 보고서 원문 기준)
+# 매핑: CPPIB FY2026은 Real Assets를 부동산29%/인프라46%/에너지25%로 분해(에너지→Infra).
+#       OTPP는 이펙티브 믹스(레버리지 포함, 합계>100%), PE=사모주식+벤처그로스.
+#       PSP FI=채권+현금, HF/Other=천연자원+보완PF. CalPERS는 보유내역 합산 파생값.
+ALLOC_TS = {
+    "CPPIB": {
+        "FY2022": {"Private Equity":32,"Private Credit":16,"Infrastructure":9,"Real Estate":9,"Hedge Fund/Other":0,"Public Equity":27,"Fixed Income":7},
+        "FY2023": {"Private Equity":33,"Private Credit":13,"Infrastructure":9,"Real Estate":9,"Hedge Fund/Other":0,"Public Equity":24,"Fixed Income":12},
+        "FY2024": {"Private Equity":31,"Private Credit":13,"Infrastructure":8,"Real Estate":8,"Hedge Fund/Other":0,"Public Equity":28,"Fixed Income":12},
+        "FY2025": {"Private Equity":29,"Private Credit":11,"Infrastructure":9,"Real Estate":7,"Hedge Fund/Other":0,"Public Equity":29,"Fixed Income":15},
+        "FY2026": {"Private Equity":22,"Private Credit":9,"Infrastructure":14.2,"Real Estate":5.8,"Hedge Fund/Other":0,"Public Equity":36,"Fixed Income":13},
+    },
+    "OTPP": {
+        "2021": {"Private Equity":26,"Private Credit":10,"Infrastructure":11,"Real Estate":11,"Hedge Fund/Other":6,"Public Equity":11,"Fixed Income":19},
+        "2022": {"Private Equity":27,"Private Credit":14,"Infrastructure":16,"Real Estate":12,"Hedge Fund/Other":8,"Public Equity":9,"Fixed Income":35},
+        "2023": {"Private Equity":27,"Private Credit":16,"Infrastructure":16,"Real Estate":12,"Hedge Fund/Other":8,"Public Equity":10,"Fixed Income":39},
+        "2024": {"Private Equity":27,"Private Credit":14,"Infrastructure":17,"Real Estate":11,"Hedge Fund/Other":9,"Public Equity":14,"Fixed Income":30},
+        "2025": {"Private Equity":25,"Private Credit":14,"Infrastructure":13,"Real Estate":10,"Hedge Fund/Other":9,"Public Equity":18,"Fixed Income":23},
+    },
+    "CalPERS": {
+        "FY2021": {"Private Equity":7.9,"Private Credit":0.5,"Infrastructure":1.4,"Real Estate":7.8,"Hedge Fund/Other":7.0,"Public Equity":48.7,"Fixed Income":26.6},
+        "FY2022": {"Private Equity":11.0,"Private Credit":1.3,"Infrastructure":2.6,"Real Estate":11.9,"Hedge Fund/Other":10.5,"Public Equity":38.5,"Fixed Income":24.3},
+        "FY2023": {"Private Equity":11.9,"Private Credit":2.1,"Infrastructure":3.0,"Real Estate":11.2,"Hedge Fund/Other":5.5,"Public Equity":40.7,"Fixed Income":25.5},
+        "FY2024": {"Private Equity":14.1,"Private Credit":2.6,"Infrastructure":3.1,"Real Estate":8.5,"Hedge Fund/Other":3.3,"Public Equity":41.3,"Fixed Income":27.2},
+        "FY2025": {"Private Equity":15.7,"Private Credit":3.4,"Infrastructure":3.3,"Real Estate":7.4,"Hedge Fund/Other":3.4,"Public Equity":39.6,"Fixed Income":27.1},
+    },
+    "PSP Investments": {
+        "FY2021": {"Private Equity":15.5,"Private Credit":7.1,"Infrastructure":9.0,"Real Estate":13.1,"Hedge Fund/Other":4.8,"Public Equity":29.4,"Fixed Income":21.0},
+        "FY2022": {"Private Equity":15.3,"Private Credit":9.5,"Infrastructure":10.2,"Real Estate":13.5,"Hedge Fund/Other":5.6,"Public Equity":25.7,"Fixed Income":20.2},
+        "FY2023": {"Private Equity":15.3,"Private Credit":10.7,"Infrastructure":12.1,"Real Estate":13.1,"Hedge Fund/Other":5.9,"Public Equity":21.9,"Fixed Income":21.0},
+        "FY2024": {"Private Equity":15.3,"Private Credit":9.9,"Infrastructure":13.0,"Real Estate":10.3,"Hedge Fund/Other":6.6,"Public Equity":21.0,"Fixed Income":23.9},
+        "FY2025": {"Private Equity":13.6,"Private Credit":10.1,"Infrastructure":10.7,"Real Estate":8.9,"Hedge Fund/Other":6.5,"Public Equity":26.6,"Fixed Income":23.7},
+    },
 }
 
 # 자산군별 전략 요약
