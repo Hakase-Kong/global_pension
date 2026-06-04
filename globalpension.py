@@ -323,7 +323,7 @@ def get_top_pages_text(uploaded_file, max_pages=8, max_chars=12000):
 
 def summarize_pdf(uploaded_file):
     """
-    배분표 관련 페이지의 텍스트를 추출 → gpt-4o-mini로 분석.
+    배분표 관련 페이지의 텍스트를 추출 → gpt-4o로 분석.
     텍스트 테이블(DETAILED ASSET MIX 등)은 텍스트 추출이 비전보다 정확함.
     반환: (summary_text: str, fund_name: str, year: str, allocation: dict)
     """
@@ -354,22 +354,23 @@ Return ONLY this JSON:
 
 STRICT RULES:
 1. Use ONLY ONE table — prefer the most detailed asset mix table (e.g. "Detailed Asset Mix").
-2. Use the LEAF-LEVEL (most granular) rows, not subtotal/parent rows. For example, if the table shows "Public equity 18%", "Private equity 19%", "Venture growth 6%" under an "Equity" header, extract each sub-item separately — do NOT use the "Equity 43%" subtotal.
-3. EXCEPTION: If a category has no sub-items in the table (e.g. "Fixed income 23%", "Credit 14%"), keep it as-is.
-4. EXCEPTION: If the table only shows "Real Assets" as a single combined line (no sub-items), keep it as one key.
-5. If the table shows dollar amounts only, calculate % = each item / sum of positive items × 100.
-6. EXCLUDE items with negative values (leverage, funding, borrowing, "funding and other").
-7. The allocation values (after excluding negatives) must sum to approximately 100%.
-8. If no clear allocation table exists in the text, return "allocation": {{}} and "allocation_found": false.
-9. NEVER fabricate or estimate. Only use numbers explicitly in the text.
-10. Use the exact category name as written in the table (e.g. "Public equity", "Venture growth", "Inflation hedge", "Natural resources").
+2. COMPLETENESS IS CRITICAL: Extract EVERY single row that has a percentage value. Do NOT skip any row. Common rows that get missed: "Absolute return strategies", "Credit", "Natural resources", "Inflation hedge" — include all of them.
+3. Use the LEAF-LEVEL (most granular) rows, not subtotal/parent rows. Subtotal/parent rows are lines like "Equity 43%", "Inflation sensitive 20%", "Real assets 23%" that have indented sub-items beneath them. Extract only the indented sub-items.
+4. EXCEPTION: If a category has NO sub-items (e.g. "Fixed income 23%", "Credit 14%", "Absolute return strategies 9%"), keep it as-is — these are leaf rows.
+5. EXCEPTION: If the table only shows a combined line with no sub-items, keep it as one key.
+6. If the table shows dollar amounts only, calculate % = each item / sum of positive items × 100.
+7. EXCLUDE items with negative values (leverage, funding, borrowing, "funding and other").
+8. The allocation values (after excluding negatives) must sum to approximately 100%.
+9. If no clear allocation table exists in the text, return "allocation": {{}} and "allocation_found": false.
+10. NEVER fabricate or estimate. Only use numbers explicitly in the text.
+11. Use the exact category name as written in the table (e.g. "Public equity", "Venture growth", "Inflation hedge", "Natural resources", "Absolute return strategies").
 
 PAGES:
 {page_text}"""
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}]
         )
