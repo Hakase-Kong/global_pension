@@ -338,32 +338,35 @@ def summarize_pdf(uploaded_file):
 
     prompt = f"""Below are selected pages from a pension fund annual report (filename: '{filename}').
 
-Your task: find the PRIMARY asset allocation table (e.g. "Detailed Asset Mix", "Net Investments", "Portfolio Overview") showing all major asset classes and their percentage weights.
+Your task: find the PRIMARY asset allocation table (e.g. "Detailed Asset Mix", "Net Investments", "Portfolio Overview").
+Many such tables show TWO years side-by-side (e.g. a current year column AND a prior year comparison column). Extract BOTH if present.
 
 Return ONLY this JSON:
 {{
   "fund_name": "<full official fund name exactly as printed>",
-  "report_year": "<fiscal year end as 4-digit string, e.g. '2024'>",
+  "report_year": "<most recent fiscal year in the table, 4-digit string, e.g. '2025'>",
+  "prior_year": "<prior year in the table if present, e.g. '2024', else null>",
   "summary": "<120-word summary: allocation changes, private markets exposure, risks, opportunities>",
-  "allocation_source": "<which table/section you used, e.g. 'Detailed Asset Mix table'>",
+  "allocation_source": "<which table/section you used>",
   "allocation": {{
-    "<asset class name exactly as in the table>": <% as number, positive only>
+    "<asset class name exactly as in the table>": <Asset Mix % for the MOST RECENT year, positive only>
+  }},
+  "prior_allocation": {{
+    "<asset class name exactly as in the table>": <Asset Mix % for the PRIOR year, positive only>
   }},
   "allocation_found": true or false
 }}
 
 STRICT RULES:
 1. Use ONLY ONE table — prefer the most detailed asset mix table (e.g. "Detailed Asset Mix").
-2. COMPLETENESS IS CRITICAL: Extract EVERY single row that has a percentage value. Do NOT skip any row. Common rows that get missed: "Absolute return strategies", "Credit", "Natural resources", "Inflation hedge" — include all of them.
-3. Use the LEAF-LEVEL (most granular) rows, not subtotal/parent rows. Subtotal/parent rows are lines like "Equity 43%", "Inflation sensitive 20%", "Real assets 23%" that have indented sub-items beneath them. Extract only the indented sub-items.
-4. EXCEPTION: If a category has NO sub-items (e.g. "Fixed income 23%", "Credit 14%", "Absolute return strategies 9%"), keep it as-is — these are leaf rows.
-5. EXCEPTION: If the table only shows a combined line with no sub-items, keep it as one key.
-6. If the table shows dollar amounts only, calculate % = each item / sum of positive items × 100.
-7. EXCLUDE items with negative values (leverage, funding, borrowing, "funding and other").
-8. The allocation values (after excluding negatives) must sum to approximately 100%.
-9. If no clear allocation table exists in the text, return "allocation": {{}} and "allocation_found": false.
-10. NEVER fabricate or estimate. Only use numbers explicitly in the text.
-11. Use the exact category name as written in the table (e.g. "Public equity", "Venture growth", "Inflation hedge", "Natural resources", "Absolute return strategies").
+2. COMPLETENESS IS CRITICAL: Extract EVERY single row that has a percentage. Do NOT skip any row. Rows commonly missed: "Absolute return strategies", "Credit", "Natural resources", "Inflation hedge" — include ALL of them.
+3. Use LEAF-LEVEL rows only — NOT subtotal/parent rows. Subtotals are bold header lines with indented sub-items below (e.g. "Equity 43%", "Inflation sensitive 20%", "Real assets 23%"). Extract only the indented sub-items beneath them.
+4. EXCEPTION: Standalone rows with no sub-items (e.g. "Fixed income 23%", "Credit 14%", "Absolute return strategies 9%") ARE leaf rows — keep them.
+5. If the table shows dollar amounts, calculate % = item / sum of positive items × 100.
+6. EXCLUDE rows with negative values (Funding and other, leverage, borrowing).
+7. Apply rules 2–6 identically to BOTH the current year column AND the prior year column.
+8. If no prior year column exists, return "prior_allocation": {{}}, "prior_year": null.
+9. NEVER fabricate. Only use numbers explicitly printed in the table.
 
 PAGES:
 {page_text}"""
@@ -377,44 +380,51 @@ PAGES:
         data = json.loads(response.choices[0].message.content)
         fund_name = data.get("fund_name", filename)
         year = str(data.get("report_year", ""))
+        prior_year = str(data.get("prior_year", "") or "")
         summary = data.get("summary", "")
         alloc_source = data.get("allocation_source", "")
         raw_alloc = data.get("allocation", {})
+        raw_prior = data.get("prior_allocation", {})
         found = data.get("allocation_found", bool(raw_alloc))
 
-        # 자산군 이름 정규화 + 음수/0 제거 + 동일 canonical 합산
-        allocation = {}
-        for k, v in raw_alloc.items():
-            try:
-                val = float(v)
-            except (TypeError, ValueError):
-                continue
-            if val <= 0:
-                continue
-            canonical = normalize_asset_name(k)
-            allocation[canonical] = allocation.get(canonical, 0) + val
+        def build_allocation(raw):
+            alloc = {}
+            for k, v in raw.items():
+                try:
+                    val = float(v)
+                except (TypeError, ValueError):
+                    continue
+                if val <= 0:
+                    continue
+                canonical = normalize_asset_name(k)
+                alloc[canonical] = alloc.get(canonical, 0) + val
+            return remove_subtotals(alloc)
 
-        allocation = remove_subtotals(allocation)
+        allocation = build_allocation(raw_alloc)
+        prior_allocation = build_allocation(raw_prior) if raw_prior else {}
+
         total = sum(allocation.values())
 
         if not found or not allocation or total < 30:
-            # 데이터 없거나 너무 적음
             st.warning(f"⚠️ **'{filename}'**: 배분 데이터를 확인하지 못했습니다.")
             allocation = {}
+            prior_allocation = {}
         else:
-            # 정규화 하지 않음 — 원본 PDF 비중 그대로 유지
-            # (레버리지 구조 펀드는 양수 합계가 100% 초과할 수 있음)
             note = f" (합계 {total:.1f}%)" if not (90 <= total <= 110) else ""
             with st.expander(f"📋 '{filename}' 추출 내역{note}"):
                 st.caption(f"출처: {alloc_source or '-'}")
+                st.write(f"**{year}년:**")
                 st.json({k: f"{v:.1f}%" for k, v in allocation.items()})
+                if prior_allocation and prior_year:
+                    st.write(f"**{prior_year}년 (비교):**")
+                    st.json({k: f"{v:.1f}%" for k, v in prior_allocation.items()})
 
     except Exception as e:
         st.warning(f"'{filename}' 분석 실패: {e}")
-        return f"[{filename}] 분석 실패\n", filename, "", {}
+        return f"[{filename}] 분석 실패\n", filename, "", {}, "", {}
 
     label = f"{fund_name} ({year})" if year else fund_name
-    return f"[{label}]\n{summary}", fund_name, year, allocation
+    return f"[{label}]\n{summary}", fund_name, year, allocation, prior_year, prior_allocation
 
 
 # =====================================================
@@ -626,14 +636,18 @@ if run_button:
         for i, report in enumerate(uploaded_reports):
 
             with st.spinner(f"요약 중: {report.name}"):
-                summary, fund_name, year, allocation = summarize_pdf(report)
+                summary, fund_name, year, allocation, prior_year, prior_allocation = summarize_pdf(report)
                 report_summaries += summary + "\n\n"
-                if allocation and fund_name:
-                    # 유사한 펀드명이 이미 있으면 그 이름으로 통합
+                if fund_name:
                     canonical = normalize_fund_name(fund_name, list(fund_timeseries.keys()))
                     if canonical not in fund_timeseries:
                         fund_timeseries[canonical] = {}
-                    fund_timeseries[canonical][year or "Unknown"] = allocation
+                    if allocation:
+                        fund_timeseries[canonical][year or "Unknown"] = allocation
+                    if prior_allocation and prior_year:
+                        # 같은 표에서 추출한 비교연도 데이터도 저장 (중복 시 덮어쓰지 않음)
+                        if prior_year not in fund_timeseries[canonical]:
+                            fund_timeseries[canonical][prior_year] = prior_allocation
 
             summary_bar.progress((i + 1) / len(uploaded_reports))
 
