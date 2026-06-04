@@ -247,18 +247,17 @@ SUBTOTAL_PARENTS = {
     "Alternatives":       ["Absolute Return", "Private Credit", "Secondaries"],
 }
 
-def remove_subtotals(allocation: dict, tol: float = 0.05) -> dict:
+def remove_subtotals(allocation: dict) -> dict:
     """
     부모(소계) 항목과 자식 항목이 동시에 존재할 때 부모를 제거.
-    tol: 자식 합계가 부모 값의 (1±tol) 범위면 소계로 판단.
+    자식 항목이 1개 이상 있으면 부모는 소계로 간주하고 무조건 제거.
     """
     to_remove = set()
     for parent, children in SUBTOTAL_PARENTS.items():
         if parent not in allocation:
             continue
-        child_sum = sum(allocation[c] for c in children if c in allocation)
-        parent_val = allocation[parent]
-        if parent_val > 0 and abs(child_sum - parent_val) / parent_val <= tol:
+        present_children = [c for c in children if c in allocation]
+        if present_children:  # 자식이 하나라도 있으면 부모(소계) 제거
             to_remove.add(parent)
     return {k: v for k, v in allocation.items() if k not in to_remove}
 
