@@ -1,844 +1,457 @@
-import os
-import re
-import io
-import json
-import base64
-import requests
-import difflib
-import fitz  # pymupdf
-import pandas as pd
-import streamlit as st
-import plotly.express as px
-
-from openai import OpenAI
-
-# =====================================================
-# PAGE CONFIG
-# =====================================================
-
-st.set_page_config(
-    page_title="Global Pension Intelligence Platform",
-    layout="wide"
-)
-
-# =====================================================
-# ENVIRONMENT
-# =====================================================
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-NAVER_CLIENT_ID = os.getenv("NAVER_CLIENT_ID")
-NAVER_CLIENT_SECRET = os.getenv("NAVER_CLIENT_SECRET")
-
-client = None
-
-if OPENAI_API_KEY:
-    client = OpenAI(api_key=OPENAI_API_KEY)
-
-# =====================================================
-# KEYWORDS
-# =====================================================
-
-KEYWORDS = [
-    "CalPERS",
-    "CPP Investments",
-    "OMERS",
-    "APG",
-    "AustralianSuper",
-    "GPIF",
-    "Private Equity",
-    "Private Credit",
-    "Infrastructure",
-    "Secondaries"
-]
-
-# =====================================================
-# UTIL
-# =====================================================
-
-def clean_html(text):
-    if not text:
-        return ""
-    return re.sub(r"<.*?>", "", text)
-
-# =====================================================
-# NAVER NEWS
-# =====================================================
-
-@st.cache_data(ttl=3600)
-def search_news(query):
-
-    if not NAVER_CLIENT_ID or not NAVER_CLIENT_SECRET:
-        return []
-
-    url = "https://openapi.naver.com/v1/search/news.json"
-
-    headers = {
-        "X-Naver-Client-Id": NAVER_CLIENT_ID,
-        "X-Naver-Client-Secret": NAVER_CLIENT_SECRET
-    }
-
-    params = {
-        "query": query,
-        "display": 10,
-        "sort": "date"
-    }
-
-    try:
-
-        res = requests.get(
-            url,
-            headers=headers,
-            params=params,
-            timeout=20
-        )
-
-        res.raise_for_status()
-
-        data = res.json()
-
-        return data.get("items", [])
-
-    except Exception as e:
-
-        st.error(f"Naver Error: {e}")
-        return []
-
-@st.cache_data(ttl=3600)
-def collect_news():
-
-    articles = []
-    seen = set()
-
-    for keyword in KEYWORDS:
-
-        items = search_news(keyword)
-
-        for item in items:
-
-            link = item.get("originallink", "")
-
-            if link in seen:
-                continue
-
-            seen.add(link)
-
-            articles.append(
-                {
-                    "keyword": keyword,
-                    "title": clean_html(
-                        item.get("title", "")
-                    ),
-                    "description": clean_html(
-                        item.get("description", "")
-                    ),
-                    "link": link
-                }
-            )
-
-    return articles
-
-# =====================================================
-# PDF 텍스트 추출 → 요약
-# =====================================================
-
-ALLOC_KEYWORDS = [
-    # 배분표 직접 지칭 (고득점)
-    "asset mix", "asset allocation", "asset class", "portfolio mix",
-    "investment mix", "portfolio breakdown", "strategic allocation",
-    "asset breakdown", "portfolio overview", "net investments",
-    "% of net assets", "as at december", "as at march", "as at june",
-    # 자산군 명칭
-    "fixed income", "fixed-income", "private equity", "real assets",
-    "inflation sensitive", "absolute return strategies",
-    "public equity", "private credit", "infrastructure",
-    # 점수 보조
-    "total portfolio", "net assets", "equity"
-]
-
-# 배분표 고신뢰 키워드 (이게 있으면 점수 대폭 상승)
-HIGH_VALUE_KEYWORDS = [
-    "asset mix", "asset allocation", "net investments",
-    "% of net assets", "as at december", "as at march", "as at june",
-    "strategic portfolio", "portfolio breakdown", "asset class"
-]
-
-# ─── 자산군 이름 정규화 ───────────────────────────────
-# 소문자·구두점 정규화 후 매핑할 canonical 이름 사전
-ASSET_CANONICAL = {
-    # ── Equity ──────────────────────────────────────────
-    "public equity": "Public Equity",
-    "public equities": "Public Equity",
-    "listed equity": "Public Equity",
-    "listed equities": "Public Equity",
-    "global equity": "Public Equity",
-    "global equities": "Public Equity",
-    "private equity": "Private Equity",
-    "private equities": "Private Equity",
-    "pe": "Private Equity",
-    "venture growth": "Venture Growth",
-    "venture capital": "Venture Growth",
-    # broad equity (only when no public/private split given)
-    "equity": "Equity",
-    "equities": "Equity",
-    # ── Fixed Income ─────────────────────────────────────
-    "fixed income": "Fixed Income",
-    "fixed-income": "Fixed Income",
-    "fixed income securities": "Fixed Income",
-    "public fixed income": "Fixed Income",
-    "bonds": "Fixed Income",
-    "government bonds": "Fixed Income",
-    "rates": "Fixed Income",
-    # ── Infrastructure ───────────────────────────────────
-    "unlisted infrastructure": "Infrastructure",
-    "listed infrastructure": "Infrastructure",
-    "real infrastructure": "Infrastructure",
-    "infrastructure": "Infrastructure",
-    "infra": "Infrastructure",
-    # ── Real Assets (combined) ───────────────────────────
-    "real assets": "Real Assets",
-    # ── Real Estate ──────────────────────────────────────
-    "unlisted real estate": "Real Estate",
-    "listed real estate": "Real Estate",
-    "real estate": "Real Estate",
-    "property": "Real Estate",
-    # ── Credit ───────────────────────────────────────────
-    "credit investments": "Credit",
-    "private credit": "Private Credit",
-    "private debt": "Private Credit",
-    "credit": "Credit",
-    # ── Inflation Sensitive & sub-items ──────────────────
-    "inflation sensitive": "Inflation Sensitive",
-    "inflation-sensitive": "Inflation Sensitive",
-    "inflation hedge": "Inflation Hedge",
-    "inflation hedging": "Inflation Hedge",
-    "real return": "Inflation Sensitive",
-    "commodities": "Commodities",
-    "commodity": "Commodities",
-    # ── Natural Resources ────────────────────────────────
-    "natural resources": "Natural Resources",
-    "natural resource": "Natural Resources",
-    # ── Absolute Return / Alternatives ───────────────────
-    "absolute return strategies": "Absolute Return",
-    "absolute return strategy": "Absolute Return",
-    "absolute return": "Absolute Return",
-    "alternatives": "Alternatives",
-    "alternative investments": "Alternatives",
-    "hedge funds": "Alternatives",
-    # ── Secondaries ──────────────────────────────────────
-    "secondaries": "Secondaries",
-    # ── Cash ─────────────────────────────────────────────
-    "cash and cash equivalents": "Cash",
-    "cash and equivalents": "Cash",
-    "short term investments": "Cash",
-    "money market": "Cash",
-    "cash": "Cash",
-    # ── Renewable Energy ─────────────────────────────────
-    "unlisted renewable energy infrastructure": "Renewable Energy Infrastructure",
-    "renewable energy infrastructure": "Renewable Energy Infrastructure",
-    "renewable energy": "Renewable Energy Infrastructure",
-}
-
-# 알려진 부모-자식 계층 (canonical 이름 기준)
-# 자식들의 합이 부모 값에 가까우면 부모를 제거
-SUBTOTAL_PARENTS = {
-    "Equity":             ["Public Equity", "Private Equity", "Venture Growth"],
-    "Inflation Sensitive":["Commodities", "Natural Resources", "Inflation Hedge"],
-    "Real Assets":        ["Real Estate", "Infrastructure", "Renewable Energy Infrastructure"],
-    "Alternatives":       ["Absolute Return", "Private Credit", "Secondaries"],
-}
-
-def remove_subtotals(allocation: dict) -> dict:
-    """
-    부모(소계) 항목과 자식 항목이 동시에 존재할 때 부모를 제거.
-    자식 항목이 1개 이상 있으면 부모는 소계로 간주하고 무조건 제거.
-    """
-    to_remove = set()
-    for parent, children in SUBTOTAL_PARENTS.items():
-        if parent not in allocation:
-            continue
-        present_children = [c for c in children if c in allocation]
-        if present_children:  # 자식이 하나라도 있으면 부모(소계) 제거
-            to_remove.add(parent)
-    return {k: v for k, v in allocation.items() if k not in to_remove}
-
-
-def normalize_asset_name(raw_name: str) -> str:
-    """자산군 이름을 canonical 형태로 정규화."""
-    key = re.sub(r"[^a-z0-9 ]", "", raw_name.lower()).strip()
-    # 완전 일치 먼저
-    if key in ASSET_CANONICAL:
-        return ASSET_CANONICAL[key]
-    # 부분 일치 — 긴 키(더 구체적)부터 매칭해야 "equities"가 "public equities"를 가로채지 않음
-    sorted_keys = sorted(ASSET_CANONICAL.keys(), key=len, reverse=True)
-    for k in sorted_keys:
-        if k in key or key in k:
-            return ASSET_CANONICAL[k]
-    # 그래도 없으면 Title Case 반환
-    return raw_name.strip().title()
-
-
-import re as _re
-
-def get_top_pages_text(uploaded_file, max_pages=8, max_chars=12000):
-    """
-    전체 PDF를 스캔 → 배분표 관련 키워드 점수가 높은 페이지의 텍스트를 반환.
-    텍스트 테이블(DETAILED ASSET MIX 등)은 이미지보다 텍스트 추출이 훨씬 정확함.
-    """
-    try:
-        file_bytes = uploaded_file.read()
-        doc = fitz.open(stream=io.BytesIO(file_bytes), filetype="pdf")
-        del file_bytes
-
-        scored = []
-        for i, page in enumerate(doc):
-            t = page.get_text() or ""
-            tl = t.lower()
-            # 일반 키워드 점수
-            score = sum(1 for kw in ALLOC_KEYWORDS if kw in tl)
-            # 고신뢰 키워드 3배 가중치
-            score += sum(3 for kw in HIGH_VALUE_KEYWORDS if kw in tl)
-            # % 숫자 개수 보너스 (배분표에 많이 등장)
-            pct_count = len(_re.findall(r'\d+\.?\d*\s*%', t))
-            score += min(pct_count, 15)
-            # 앞 3페이지 소폭 보너스 (요약 배분이 앞에 있는 경우)
-            if i < 3:
-                score += 3
-            if score > 0:
-                scored.append((score, i, t))
-
-        # 점수 높은 순 정렬 → 상위 max_pages 선택 → 페이지 순서 복원
-        scored.sort(key=lambda x: -x[0])
-        top = sorted(scored[:max_pages], key=lambda x: x[1])
-
-        combined = "\n\n--- PAGE BREAK ---\n\n".join(
-            f"[Page {idx+1}]\n{txt}" for _, idx, txt in top
-        )
-        doc.close()
-        return combined[:max_chars]
-
-    except Exception as e:
-        st.warning(f"텍스트 추출 실패: {e}")
-        return ""
-
-
-def summarize_pdf(uploaded_file):
-    """
-    배분표 관련 페이지의 텍스트를 추출 → gpt-4o로 분석.
-    텍스트 테이블(DETAILED ASSET MIX 등)은 텍스트 추출이 비전보다 정확함.
-    반환: (summary_text: str, fund_name: str, year: str, allocation: dict)
-    """
-    if not client:
-        return "", "", "", {}
-
-    filename = uploaded_file.name
-    page_text = get_top_pages_text(uploaded_file, max_pages=8, max_chars=12000)
-
-    if not page_text.strip():
-        return f"[{filename}] (텍스트 추출 실패)\n", filename, "", {}
-
-    prompt = f"""Below are selected pages from a pension fund annual report (filename: '{filename}').
-
-Your task: find the PRIMARY asset allocation table (e.g. "Detailed Asset Mix", "Net Investments", "Portfolio Overview").
-Many such tables show TWO years side-by-side (e.g. a current year column AND a prior year comparison column). Extract BOTH if present.
-
-Return ONLY this JSON:
-{{
-  "fund_name": "<full official fund name exactly as printed>",
-  "report_year": "<most recent fiscal year in the table, 4-digit string, e.g. '2025'>",
-  "prior_year": "<prior year in the table if present, e.g. '2024', else null>",
-  "summary": "<120-word summary: allocation changes, private markets exposure, risks, opportunities>",
-  "allocation_source": "<which table/section you used>",
-  "allocation": {{
-    "<asset class name exactly as in the table>": <Asset Mix % for the MOST RECENT year, positive only>
-  }},
-  "prior_allocation": {{
-    "<asset class name exactly as in the table>": <Asset Mix % for the PRIOR year, positive only>
-  }},
-  "allocation_found": true or false
-}}
-
-STRICT RULES:
-1. Use ONLY ONE table — prefer the most detailed asset mix table (e.g. "Detailed Asset Mix").
-2. COMPLETENESS IS CRITICAL: Extract EVERY single row that has a percentage. Do NOT skip any row. Rows commonly missed: "Absolute return strategies", "Credit", "Natural resources", "Inflation hedge" — include ALL of them.
-3. Use LEAF-LEVEL rows only — NOT subtotal/parent rows. Subtotals are bold header lines with indented sub-items below (e.g. "Equity 43%", "Inflation sensitive 20%", "Real assets 23%"). Extract only the indented sub-items beneath them.
-4. EXCEPTION: Standalone rows with no sub-items (e.g. "Fixed income 23%", "Credit 14%", "Absolute return strategies 9%") ARE leaf rows — keep them.
-5. If the table shows dollar amounts, calculate % = item / sum of positive items × 100.
-6. EXCLUDE rows with negative values (Funding and other, leverage, borrowing).
-7. Apply rules 2–6 identically to BOTH the current year column AND the prior year column.
-8. If no prior year column exists, return "prior_allocation": {{}}, "prior_year": null.
-9. NEVER fabricate. Only use numbers explicitly printed in the table.
-
-PAGES:
-{page_text}"""
-
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            response_format={"type": "json_object"},
-            messages=[{"role": "user", "content": prompt}]
-        )
-        data = json.loads(response.choices[0].message.content)
-        fund_name = data.get("fund_name", filename)
-        year = str(data.get("report_year", ""))
-        prior_year = str(data.get("prior_year", "") or "")
-        summary = data.get("summary", "")
-        alloc_source = data.get("allocation_source", "")
-        raw_alloc = data.get("allocation", {})
-        raw_prior = data.get("prior_allocation", {})
-        found = data.get("allocation_found", bool(raw_alloc))
-
-        def build_allocation(raw):
-            alloc = {}
-            for k, v in raw.items():
-                try:
-                    val = float(v)
-                except (TypeError, ValueError):
-                    continue
-                if val <= 0:
-                    continue
-                canonical = normalize_asset_name(k)
-                alloc[canonical] = alloc.get(canonical, 0) + val
-            return remove_subtotals(alloc)
-
-        allocation = build_allocation(raw_alloc)
-        prior_allocation = build_allocation(raw_prior) if raw_prior else {}
-
-        total = sum(allocation.values())
-
-        if not found or not allocation or total < 30:
-            st.warning(f"⚠️ **'{filename}'**: 배분 데이터를 확인하지 못했습니다.")
-            allocation = {}
-            prior_allocation = {}
-        else:
-            note = f" (합계 {total:.1f}%)" if not (90 <= total <= 110) else ""
-            with st.expander(f"📋 '{filename}' 추출 내역{note}"):
-                st.caption(f"출처: {alloc_source or '-'}")
-                st.write(f"**{year}년:**")
-                st.json({k: f"{v:.1f}%" for k, v in allocation.items()})
-                if prior_allocation and prior_year:
-                    st.write(f"**{prior_year}년 (비교):**")
-                    st.json({k: f"{v:.1f}%" for k, v in prior_allocation.items()})
-
-    except Exception as e:
-        st.warning(f"'{filename}' 분석 실패: {e}")
-        return f"[{filename}] 분석 실패\n", filename, "", {}, "", {}
-
-    label = f"{fund_name} ({year})" if year else fund_name
-    return f"[{label}]\n{summary}", fund_name, year, allocation, prior_year, prior_allocation
-
-
-# =====================================================
-# OPENAI 최종 분석
-# =====================================================
-
-def analyze_intelligence(articles, report_summaries=""):
-
-    if not client:
-        return None
-
-    news_text = "\n".join(
-        [
-            f"- {x['title']} | {x['description']}"
-            for x in articles[:50]
-        ]
-    )
-
-    prompt = f"""You are CIO advisor for a Korean insurance company.
-
-Based on the pension report summaries and news below, analyze:
-1. Global pension allocation shifts
-2. Private market trends (PE, Private Credit, Infrastructure, Real Estate, Secondaries)
-3. Key opportunities for Korean insurers
-4. Risk alerts
-5. Liquidity concerns
-
-Return ONLY this JSON structure:
-{{
- "signals": {{
-   "Private Equity": "",
-   "Private Credit": "",
-   "Infrastructure": "",
-   "Real Estate": "",
-   "Secondaries": ""
- }},
- "brief": "",
- "opportunities": [],
- "risk_alerts": [],
- "implications": ""
-}}
-
-PENSION REPORT SUMMARIES:
-{report_summaries if report_summaries else "(No reports uploaded)"}
-
-NEWS:
-{news_text}
+"""
+globalpension.py
+────────────────────────────────────────────────────────────────
+글로벌 연기금 / 국부펀드 투자 데이터 뷰어
+  - Allocation Detail (자산배분 %)
+  - Geographic Exposure (국가별 익스포져)
+  - Returns by Asset Class (asset class별 수익률)
+  - Multi-Year Returns (다년도 수익률 추이)
+
+실행: python globalpension.py
 """
 
-    try:
+# ══════════════════════════════════════════════════════════════
+# 1. 데이터 정의
+# ══════════════════════════════════════════════════════════════
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            response_format={"type": "json_object"},
-            messages=[{"role": "user", "content": prompt}]
-        )
+# ── 1-A. 자산배분 % ───────────────────────────────────────────
+ALLOCATION_DETAIL = [
+    {"fund":"CPP Investments","year":"FY2025","aum":714.4,"currency":"CAD B",
+     "equity_total":0.58,"public_equity":0.29,"private_equity":0.29,
+     "fixed_income":0.15,"real_estate":0.07,"infrastructure":0.09,
+     "credit":0.11,"alternatives":None,"cash_other":None,
+     "notes":"Real Estate + Infra 별도 집계"},
+    {"fund":"CPP Investments","year":"FY2026","aum":793.3,"currency":"CAD B",
+     "equity_total":0.58,"public_equity":0.36,"private_equity":0.22,
+     "fixed_income":0.13,"real_estate":None,"infrastructure":None,
+     "credit":0.09,"alternatives":None,"cash_other":None,
+     "notes":"FY2026부터 Real Assets 통합 20%"},
+    {"fund":"OTPP","year":"2024","aum":266.3,"currency":"CAD B",
+     "equity_total":0.41,"public_equity":0.14,"private_equity":0.23,
+     "fixed_income":0.30,"real_estate":0.11,"infrastructure":0.17,
+     "credit":0.14,"alternatives":0.09,"cash_other":None,
+     "notes":"ARS(절대수익) 9% 별도"},
+    {"fund":"OTPP","year":"2025","aum":279.4,"currency":"CAD B",
+     "equity_total":0.43,"public_equity":0.18,"private_equity":0.19,
+     "fixed_income":0.23,"real_estate":0.10,"infrastructure":0.13,
+     "credit":0.14,"alternatives":0.09,"cash_other":0.20,
+     "notes":"Venture Growth 6% 포함; 인플레이션민감 20%"},
+    {"fund":"PSP Investments","year":"FY2024","aum":264.9,"currency":"CAD B",
+     "equity_total":None,"public_equity":0.21,"private_equity":0.153,
+     "fixed_income":0.212,"real_estate":0.103,"infrastructure":0.130,
+     "credit":0.099,"alternatives":None,"cash_other":0.066,
+     "notes":"자연자원 6.6% 포함"},
+    {"fund":"PSP Investments","year":"FY2025","aum":299.7,"currency":"CAD B",
+     "equity_total":None,"public_equity":None,"private_equity":0.136,
+     "fixed_income":None,"real_estate":0.089,"infrastructure":0.107,
+     "credit":0.101,"alternatives":None,"cash_other":0.077,
+     "notes":"Capital Markets 48.7%; 자연자원 6.0%"},
+    {"fund":"NZ Super Fund","year":"FY2024","aum":76.65,"currency":"NZD B",
+     "equity_total":0.50,"public_equity":0.46,"private_equity":0.03,
+     "fixed_income":0.21,"real_estate":0.05,"infrastructure":0.05,
+     "credit":None,"alternatives":0.07,"cash_other":0.13,
+     "notes":"Rural/Timber 5% 포함"},
+    {"fund":"NZ Super Fund","year":"FY2025","aum":85.1,"currency":"NZD B",
+     "equity_total":0.54,"public_equity":0.50,"private_equity":0.05,
+     "fixed_income":0.18,"real_estate":0.05,"infrastructure":0.04,
+     "credit":None,"alternatives":0.08,"cash_other":0.11,
+     "notes":"Rural/Timber 5% 포함"},
+    {"fund":"CDPQ","year":"2024","aum":473.3,"currency":"CAD B",
+     "equity_total":0.466,"public_equity":0.275,"private_equity":0.191,
+     "fixed_income":0.328,"real_estate":0.089,"infrastructure":0.136,
+     "credit":0.217,"alternatives":None,"cash_other":0.009,
+     "notes":"Rates 10.3% + Credit 21.7% = FI 32.8%"},
+    {"fund":"CDPQ (La Caisse)","year":"2025","aum":517.3,"currency":"CAD B",
+     "equity_total":0.456,"public_equity":0.292,"private_equity":0.164,
+     "fixed_income":0.341,"real_estate":0.083,"infrastructure":0.144,
+     "credit":0.233,"alternatives":None,"cash_other":0.011,
+     "notes":"Rates 10.2% + Credit 23.3% = FI 34.1%"},
+    {"fund":"Future Fund","year":"FY2024","aum":224.9,"currency":"AUD B",
+     "equity_total":0.373,"public_equity":0.270,"private_equity":0.145,
+     "fixed_income":None,"real_estate":0.054,"infrastructure":0.099,
+     "credit":0.110,"alternatives":0.152,"cash_other":0.067,
+     "notes":"호주 주식 10.3% 포함"},
+    {"fund":"Future Fund","year":"FY2025","aum":252.3,"currency":"AUD B",
+     "equity_total":0.423,"public_equity":0.325,"private_equity":0.133,
+     "fixed_income":None,"real_estate":0.044,"infrastructure":0.114,
+     "credit":0.089,"alternatives":0.147,"cash_other":0.051,
+     "notes":"호주 주식 10.8% 포함"},
+    {"fund":"GPFG (Norway)","year":"2024","aum":19742,"currency":"NOK B",
+     "equity_total":0.714,"public_equity":0.714,"private_equity":None,
+     "fixed_income":0.266,"real_estate":0.018,"infrastructure":0.001,
+     "credit":None,"alternatives":None,"cash_other":0.002,
+     "notes":"비상장 RE 1.8%; 상장 RE 별도"},
+    {"fund":"GPFG (Norway)","year":"2025","aum":21268,"currency":"NOK B",
+     "equity_total":0.713,"public_equity":0.713,"private_equity":None,
+     "fixed_income":0.265,"real_estate":0.017,"infrastructure":0.004,
+     "credit":None,"alternatives":None,"cash_other":0.004,
+     "notes":"인프라 3배 증가 (태양광·풍력)"},
+    {"fund":"CalPERS","year":"FY2025","aum":634.6,"currency":"USD B",
+     "equity_total":0.393,"public_equity":0.258,"private_equity":0.156,
+     "fixed_income":0.270,"real_estate":0.074,"infrastructure":0.033,
+     "credit":None,"alternatives":None,"cash_other":0.034,
+     "notes":"민간부채 3.4% 포함"},
+]
 
-        return json.loads(response.choices[0].message.content)
+# ── 1-B. 국가별 익스포져 ─────────────────────────────────────
+GEOGRAPHIC_EXPOSURE = [
+    {"fund":"CPP Investments","year":"FY2025",
+     "usa":0.47,"canada":0.12,"europe":0.19,"asia_pacific":0.17,
+     "latin_america":0.05,"australia":None,"other":None,
+     "notes":"5개년 추이: US 36→36→38→42→47%"},
+    {"fund":"CPP Investments","year":"FY2026",
+     "usa":0.48,"canada":0.12,"europe":0.17,"asia_pacific":0.18,
+     "latin_america":0.05,"australia":None,"other":None,
+     "notes":"비캐나다 비중 78%"},
+    {"fund":"OTPP","year":"2025",
+     "usa":0.38,"canada":0.31,"europe":0.18,"asia_pacific":0.08,
+     "latin_america":0.05,"australia":None,"other":None,
+     "notes":"USD $117B, EMEA $56B, APAC $26B, LatAm $17B"},
+    {"fund":"PSP Investments","year":"FY2025",
+     "usa":0.405,"canada":0.200,"europe":0.163,"asia_pacific":0.113,
+     "latin_america":None,"australia":0.055,"other":0.064,
+     "notes":"총 투자자산 기준; Oceania 5.5%"},
+    {"fund":"NZ Super Fund","year":"FY2024",
+     "north_america":0.541,"new_zealand":0.106,
+     "usa":None,"canada":None,"europe":0.196,"asia_pacific":0.079,
+     "latin_america":None,"australia":0.038,"other":0.040,
+     "notes":"북미 54.1%, NZ 10.6%, Japan 4.2%"},
+    {"fund":"NZ Super Fund","year":"FY2025",
+     "north_america":0.571,"new_zealand":0.113,
+     "usa":None,"canada":None,"europe":0.181,"asia_pacific":0.081,
+     "latin_america":None,"australia":0.024,"other":0.030,
+     "notes":"북미 57.1%, NZ 11.3%, Japan 3.5%"},
+    {"fund":"CDPQ","year":"2024",
+     "usa":0.38,"canada":0.30,"europe":0.15,"asia_pacific":0.10,
+     "latin_america":0.04,"australia":None,"other":0.03,
+     "notes":"65개국 이상 투자"},
+    {"fund":"CDPQ (La Caisse)","year":"2025",
+     "usa":0.38,"canada":0.29,"europe":0.17,"asia_pacific":0.10,
+     "latin_america":0.04,"australia":None,"other":0.02,
+     "notes":"퀘벡 자산 $100B 달성"},
+    {"fund":"Future Fund","year":"FY2024",
+     "usa":0.43,"canada":None,"europe":0.15,"asia_pacific":0.06,
+     "latin_america":None,"australia":0.21,"other":0.10,
+     "notes":"물리적 소재지 기준; EM 10%, 개발도상국 4%"},
+    {"fund":"Future Fund","year":"FY2025",
+     "usa":0.43,"canada":None,"europe":0.15,"asia_pacific":0.06,
+     "latin_america":None,"australia":0.23,"other":0.10,
+     "notes":"물리적 소재지 기준; EM 10%, 개발도상국 4%"},
+    {"fund":"GPFG (Norway)","year":"2024",
+     "north_america":0.569,
+     "usa":0.534,"canada":None,"europe":0.252,"asia_pacific":0.142,
+     "latin_america":0.005,"australia":0.020,"other":0.007,
+     "notes":"북미 56.9%; 중동 0.4%, 아프리카 0.3%"},
+    {"fund":"GPFG (Norway)","year":"2025",
+     "north_america":0.560,
+     "usa":0.529,"canada":None,"europe":0.258,"asia_pacific":0.145,
+     "latin_america":0.005,"australia":0.019,"other":0.008,
+     "notes":"북미 56.0%; 중동 0.4%, 아프리카 0.4%"},
+    {"fund":"CalPERS","year":"FY2025",
+     "usa":None,"canada":None,"europe":None,"asia_pacific":None,
+     "latin_america":None,"australia":None,"other":None,
+     "notes":"국내주식 $163.8B / 해외주식 $79.7B (세부 지역 미공개)"},
+]
 
-    except Exception as e:
+# ── 1-C. Asset Class별 수익률 ────────────────────────────────
+RETURNS_BY_ASSET_CLASS = [
+    {"fund":"CPP Investments","year":"FY2025",
+     "total":0.093,"public_equity":0.106,"private_equity":0.118,
+     "fixed_income":0.081,"real_estate":0.038,"infrastructure":0.094,
+     "credit":0.144,"alternatives":None,"real_assets":None,
+     "notes":"Credit +14.4% 최고; RE +3.8%"},
+    {"fund":"CPP Investments","year":"FY2026",
+     "total":0.078,"public_equity":0.175,"private_equity":0.029,
+     "fixed_income":-0.001,"real_estate":0.037,"infrastructure":0.112,
+     "credit":0.037,"alternatives":None,"real_assets":0.122,
+     "notes":"Sust.Energy +23.2%; Infra +11.2%; RE +3.7%"},
+    {"fund":"OTPP","year":"2025",
+     "total":0.067,"public_equity":0.150,"private_equity":-0.053,
+     "fixed_income":0.026,"real_estate":-0.031,"infrastructure":0.018,
+     "credit":0.058,"alternatives":None,"real_assets":-0.004,
+     "notes":"Venture Growth +30.2%; 벤치마크 대비 -5.0%"},
+    {"fund":"PSP Investments","year":"FY2024",
+     "total":0.072,"public_equity":0.175,"private_equity":0.121,
+     "fixed_income":0.029,"real_estate":-0.159,"infrastructure":0.143,
+     "credit":0.142,"alternatives":None,"real_assets":None,
+     "notes":"RE -15.9% (오피스 평가손); Infra +14.3%"},
+    {"fund":"PSP Investments","year":"FY2025",
+     "total":0.126,"public_equity":None,"private_equity":None,
+     "fixed_income":None,"real_estate":None,"infrastructure":None,
+     "credit":None,"alternatives":None,"real_assets":None,
+     "notes":"하이라이트만 공개; 5yr 10.6%, 10yr 8.2%"},
+    {"fund":"NZ Super Fund","year":"FY2024",
+     "total":0.149,"public_equity":None,"private_equity":None,
+     "fixed_income":None,"real_estate":None,"infrastructure":None,
+     "credit":None,"alternatives":None,"real_assets":None,
+     "notes":"Reference Portfolio 15.13%; Value add -0.24%"},
+    {"fund":"NZ Super Fund","year":"FY2025",
+     "total":0.1184,"public_equity":None,"private_equity":None,
+     "fixed_income":None,"real_estate":None,"infrastructure":None,
+     "credit":None,"alternatives":None,"real_assets":None,
+     "notes":"Reference Portfolio 10.87%; Value add +0.98%"},
+    {"fund":"CDPQ","year":"2024",
+     "total":0.094,"public_equity":0.255,"private_equity":0.172,
+     "fixed_income":0.018,"real_estate":-0.108,"infrastructure":0.095,
+     "credit":0.008,"alternatives":None,"real_assets":None,
+     "notes":"RE -10.8%; 5yr 총수익 6.2%"},
+    {"fund":"CDPQ (La Caisse)","year":"2025",
+     "total":0.093,"public_equity":0.177,"private_equity":0.023,
+     "fixed_income":0.005,"real_estate":0.002,"infrastructure":0.092,
+     "credit":0.096,"alternatives":None,"real_assets":None,
+     "notes":"Credit +9.6%; Infra +9.2%; 5yr 6.5%"},
+    {"fund":"Future Fund","year":"FY2024",
+     "total":0.091,"public_equity":None,"private_equity":None,
+     "fixed_income":None,"real_estate":None,"infrastructure":None,
+     "credit":None,"alternatives":None,"real_assets":None,
+     "notes":"자산군별 수익률 미공개 (전체 펀드만 발표)"},
+    {"fund":"Future Fund","year":"FY2025",
+     "total":0.122,"public_equity":None,"private_equity":None,
+     "fixed_income":None,"real_estate":None,"infrastructure":None,
+     "credit":None,"alternatives":None,"real_assets":None,
+     "notes":"자산군별 수익률 미공개 (전체 펀드만 발표)"},
+    {"fund":"GPFG (Norway)","year":"2024",
+     "total":0.1309,"public_equity":0.1819,"private_equity":None,
+     "fixed_income":0.0128,"real_estate":-0.0057,"infrastructure":-0.0981,
+     "credit":None,"alternatives":None,"real_assets":None,
+     "notes":"펀드 통화 바스켓 기준; Infra -9.81%"},
+    {"fund":"GPFG (Norway)","year":"2025",
+     "total":0.1511,"public_equity":0.1929,"private_equity":None,
+     "fixed_income":0.0542,"real_estate":0.0436,"infrastructure":0.1807,
+     "credit":None,"alternatives":None,"real_assets":None,
+     "notes":"펀드 통화 바스켓 기준; Infra +18.07%"},
+    {"fund":"CalPERS","year":"FY2025",
+     "total":0.116,"public_equity":0.168,"private_equity":0.143,
+     "fixed_income":0.065,"real_estate":0.028,"infrastructure":None,
+     "credit":0.128,"alternatives":None,"real_assets":None,
+     "notes":"PE/민간부채는 Mar 2025 기준; 벤치마크 +1.7%p 초과"},
+]
 
-        st.error(f"OpenAI Error: {e}")
-        return None
+# ── 1-D. 다년도 수익률 추이 ──────────────────────────────────
+MULTI_YEAR_RETURNS = [
+    {"fund":"CPP Investments FY2026","currency":"CAD","yr_1":0.078,"yr_1_prior":0.093,"yr_5":0.066,"yr_10":0.088,"since_inception":None,"fy_end":"Mar 31"},
+    {"fund":"CPP Investments FY2025","currency":"CAD","yr_1":0.093,"yr_1_prior":0.080,"yr_5":0.090,"yr_10":0.083,"since_inception":None,"fy_end":"Mar 31"},
+    {"fund":"OTPP 2025",             "currency":"CAD","yr_1":0.067,"yr_1_prior":0.094,"yr_5":0.066,"yr_10":0.068,"since_inception":0.092,"fy_end":"Dec 31"},
+    {"fund":"PSP Investments FY2025","currency":"CAD","yr_1":0.126,"yr_1_prior":0.072,"yr_5":0.106,"yr_10":0.082,"since_inception":None,"fy_end":"Mar 31"},
+    {"fund":"PSP Investments FY2024","currency":"CAD","yr_1":0.072,"yr_1_prior":None, "yr_5":0.079,"yr_10":0.083,"since_inception":None,"fy_end":"Mar 31"},
+    {"fund":"NZ Super Fund FY2025",  "currency":"NZD","yr_1":0.1184,"yr_1_prior":0.149,"yr_5":0.1162,"yr_10":0.1006,"since_inception":0.1009,"fy_end":"Jun 30"},
+    {"fund":"NZ Super Fund FY2024",  "currency":"NZD","yr_1":0.149,"yr_1_prior":0.126,"yr_5":0.0952,"yr_10":0.1033,"since_inception":0.1000,"fy_end":"Jun 30"},
+    {"fund":"CDPQ 2025",             "currency":"CAD","yr_1":0.093,"yr_1_prior":0.094,"yr_5":0.065,"yr_10":0.072,"since_inception":None,"fy_end":"Dec 31"},
+    {"fund":"CDPQ 2024",             "currency":"CAD","yr_1":0.094,"yr_1_prior":0.072,"yr_5":0.062,"yr_10":0.071,"since_inception":None,"fy_end":"Dec 31"},
+    {"fund":"Future Fund FY2025",    "currency":"AUD","yr_1":0.122,"yr_1_prior":0.091,"yr_5":0.094,"yr_10":0.080,"since_inception":0.079,"fy_end":"Jun 30"},
+    {"fund":"Future Fund FY2024",    "currency":"AUD","yr_1":0.091,"yr_1_prior":0.082,"yr_5":0.067,"yr_10":0.083,"since_inception":0.077,"fy_end":"Jun 30"},
+    {"fund":"GPFG (Norway) 2025",    "currency":"NOK","yr_1":0.1511,"yr_1_prior":0.1309,"yr_5":0.0826,"yr_10":0.0847,"since_inception":0.0664,"fy_end":"Dec 31"},
+    {"fund":"GPFG (Norway) 2024",    "currency":"NOK","yr_1":0.1309,"yr_1_prior":0.1614,"yr_5":0.0744,"yr_10":0.0725,"since_inception":0.0634,"fy_end":"Dec 31"},
+    {"fund":"CalPERS FY2025",        "currency":"USD","yr_1":0.116,"yr_1_prior":None, "yr_5":0.080,"yr_10":0.071,"since_inception":None,"fy_end":"Jun 30"},
+]
 
-# =====================================================
-# SAMPLE ALLOCATION DATA
-# =====================================================
 
-allocation_data = {
+# ══════════════════════════════════════════════════════════════
+# 2. 출력 헬퍼
+# ══════════════════════════════════════════════════════════════
 
-    "CalPERS": {
-        "Public Equity": 42,
-        "Private Equity": 17,
-        "Fixed Income": 25,
-        "Real Assets": 10,
-        "Cash": 6
-    },
+def pct(v):
+    if v is None:
+        return "    -   "
+    return f"{v*100:+6.2f}%"
 
-    "CPP Investments": {
-        "Public Equity": 25,
-        "Private Equity": 31,
-        "Fixed Income": 15,
-        "Infrastructure": 19,
-        "Cash": 10
-    },
+def pct_plain(v):
+    if v is None:
+        return "  -  "
+    return f"{v*100:.1f}%"
 
-    "APG": {
-        "Public Equity": 35,
-        "Private Equity": 12,
-        "Fixed Income": 32,
-        "Infrastructure": 15,
-        "Cash": 6
-    },
+def divider(char="─", n=72):
+    print(char * n)
 
-    "AustralianSuper": {
-        "Public Equity": 39,
-        "Private Equity": 16,
-        "Fixed Income": 18,
-        "Infrastructure": 21,
-        "Cash": 6
-    },
+def header(title):
+    divider("═")
+    print(f"  {title}")
+    divider("═")
 
-    "GPIF": {
-        "Domestic Equity": 25,
-        "Foreign Equity": 25,
-        "Domestic Bond": 25,
-        "Foreign Bond": 25
-    }
+def sub_header(title):
+    divider("─", 50)
+    print(f"  {title}")
+    divider("─", 50)
+
+
+# ══════════════════════════════════════════════════════════════
+# 3. 뷰 함수
+# ══════════════════════════════════════════════════════════════
+
+def show_allocation_detail(filter_fund=None):
+    header("📊 자산배분 상세 (Allocation Detail)")
+    fields = [
+        ("equity_total",   "주식 합계"),
+        ("public_equity",  "  ├ 상장주식"),
+        ("private_equity", "  └ 사모주식"),
+        ("fixed_income",   "채권/FI"),
+        ("real_estate",    "부동산"),
+        ("infrastructure", "인프라"),
+        ("credit",         "크레딧"),
+        ("alternatives",   "대체투자"),
+        ("cash_other",     "현금/기타"),
+    ]
+    data = [r for r in ALLOCATION_DETAIL
+            if filter_fund is None or filter_fund.lower() in r["fund"].lower()]
+    if not data:
+        print("  해당 펀드 없음"); return
+
+    for row in data:
+        sub_header(f"{row['fund']}  |  {row['year']}  |  AUM {row['aum']:,} {row['currency']}")
+        print(f"  {'항목':<18} {'비중':>7}")
+        print("  " + "-"*26)
+        for key, label in fields:
+            v = row.get(key)
+            if v is not None:
+                print(f"  {label:<18} {pct_plain(v):>7}")
+        if row["notes"]:
+            print(f"  ※ {row['notes']}")
+    print()
+
+
+def show_geographic_exposure(filter_fund=None):
+    header("🌏 국가별 익스포져 (Geographic Exposure)")
+    regions = [
+        ("north_america", "북미 전체"),
+        ("usa",           "  ├ 미국"),
+        ("canada",        "  ├ 캐나다"),
+        ("new_zealand",   "  └ 뉴질랜드"),
+        ("europe",        "유럽"),
+        ("asia_pacific",  "아시아태평양"),
+        ("latin_america", "중남미"),
+        ("australia",     "호주"),
+        ("other",         "기타/EM"),
+    ]
+    data = [r for r in GEOGRAPHIC_EXPOSURE
+            if filter_fund is None or filter_fund.lower() in r["fund"].lower()]
+    if not data:
+        print("  해당 펀드 없음"); return
+
+    for row in data:
+        sub_header(f"{row['fund']}  |  {row['year']}")
+        print(f"  {'지역':<18} {'비중':>7}")
+        print("  " + "-"*26)
+        for key, label in regions:
+            v = row.get(key)
+            if v is not None:
+                print(f"  {label:<18} {pct_plain(v):>7}")
+        if row["notes"]:
+            print(f"  ※ {row['notes']}")
+    print()
+
+
+def show_returns_by_asset_class(filter_fund=None):
+    header("📈 Asset Class별 1년 수익률 (Returns by Asset Class)")
+    fields = [
+        ("total",          "총 펀드"),
+        ("public_equity",  "상장주식"),
+        ("private_equity", "사모주식"),
+        ("fixed_income",   "채권/FI"),
+        ("real_estate",    "부동산"),
+        ("infrastructure", "인프라"),
+        ("real_assets",    "실물자산 합계"),
+        ("credit",         "크레딧"),
+        ("alternatives",   "대체투자"),
+    ]
+    data = [r for r in RETURNS_BY_ASSET_CLASS
+            if filter_fund is None or filter_fund.lower() in r["fund"].lower()]
+    if not data:
+        print("  해당 펀드 없음"); return
+
+    for row in data:
+        sub_header(f"{row['fund']}  |  {row['year']}")
+        print(f"  {'항목':<16} {'수익률':>9}")
+        print("  " + "-"*26)
+        for key, label in fields:
+            v = row.get(key)
+            if v is not None:
+                print(f"  {label:<16} {pct(v):>9}")
+        if row["notes"]:
+            print(f"  ※ {row['notes']}")
+    print()
+
+
+def show_multi_year_returns(filter_fund=None):
+    header("📅 다년도 수익률 추이 (Multi-Year Returns)")
+    data = [r for r in MULTI_YEAR_RETURNS
+            if filter_fund is None or filter_fund.lower() in r["fund"].lower()]
+    if not data:
+        print("  해당 펀드 없음"); return
+
+    fmt = "{:<34} {:>5}  {:>8}  {:>8}  {:>8}  {:>9}  {:>9}"
+    print(fmt.format("펀드","통화","1년(최신)","1년(전년)","5년(연환)","10년(연환)","설정이후"))
+    divider("-", 86)
+    for r in data:
+        print(fmt.format(
+            r["fund"][:34], r["currency"],
+            pct_plain(r["yr_1"]),
+            pct_plain(r["yr_1_prior"]),
+            pct_plain(r["yr_5"]),
+            pct_plain(r["yr_10"]),
+            pct_plain(r["since_inception"]),
+        ))
+    print()
+
+
+def list_funds():
+    funds = sorted(set(r["fund"] for r in ALLOCATION_DETAIL))
+    print("\n  ── 수록 펀드 목록 ──")
+    for i, f in enumerate(funds, 1):
+        print(f"  {i:2}. {f}")
+    print()
+
+
+# ══════════════════════════════════════════════════════════════
+# 4. 메인 메뉴
+# ══════════════════════════════════════════════════════════════
+
+MENU = """
+╔══════════════════════════════════════════════════════════════╗
+║        글로벌 연기금 / 국부펀드 투자 데이터 뷰어             ║
+╠══════════════════════════════════════════════════════════════╣
+║  1  자산배분 상세          (Allocation Detail)               ║
+║  2  국가별 익스포져        (Geographic Exposure)             ║
+║  3  Asset Class별 수익률   (Returns by Asset Class)          ║
+║  4  다년도 수익률 추이     (Multi-Year Returns)              ║
+║  5  전체 출력              (모든 시트 한번에)                ║
+║  6  펀드 목록 보기                                           ║
+║  q  종료                                                     ║
+╚══════════════════════════════════════════════════════════════╝
+"""
+
+VIEW_MAP = {
+    "1": show_allocation_detail,
+    "2": show_geographic_exposure,
+    "3": show_returns_by_asset_class,
+    "4": show_multi_year_returns,
 }
 
-# =====================================================
-# HEADER
-# =====================================================
+def ask_filter():
+    val = input("  특정 펀드만 보려면 이름(일부) 입력, 전체는 엔터: ").strip()
+    return val if val else None
 
-st.title(
-    "🌍 Global Pension Intelligence Platform"
-)
-
-st.caption(
-    "News + Pension Reports + AI Investment Intelligence"
-)
-
-# =====================================================
-# SIDEBAR
-# =====================================================
-
-st.sidebar.header("Settings")
-
-uploaded_reports = st.sidebar.file_uploader(
-    "Upload Pension Reports (PDF, 개수 제한 없음)",
-    type=["pdf"],
-    accept_multiple_files=True
-)
-
-run_button = st.sidebar.button(
-    "🚀 Run Analysis",
-    use_container_width=True
-)
-
-# =====================================================
-# MAIN
-# =====================================================
-
-def normalize_fund_name(new_name, existing_names, threshold=0.72):
-    """
-    새 펀드명을 기존 이름 목록과 비교해 유사한 이름이 있으면 그것을 반환.
-    없으면 new_name 그대로 반환.
-    """
-    if not existing_names:
-        return new_name
-
-    # 대소문자·구두점 무시한 정규화
-    def clean(s):
-        return re.sub(r"[^a-z0-9 ]", "", s.lower()).strip()
-
-    # 비교 전 "investments", "investment board" 등 변형 접미사 제거
-    _STRIP_SUFFIXES = [
-        "investment board", "investments", "investment", "pension plan",
-        "pension fund", "pension", "capital", "asset management",
-    ]
-    def core(s):
-        t = clean(s)
-        for sfx in _STRIP_SUFFIXES:
-            if t.endswith(sfx):
-                t = t[: -len(sfx)].strip()
-        return t
-
-    clean_new = clean(new_name)
-    core_new = core(new_name)
-    best_match = None
-    best_score = 0.0
-
-    for name in existing_names:
-        clean_name = clean(name)
-        core_name = core(name)
-
-        # 1) 한쪽이 다른 쪽 문자열에 포함되면 즉시 매칭 (substring)
-        if clean_new in clean_name or clean_name in clean_new:
-            return name
-        if core_new and core_name and (core_new in core_name or core_name in core_new):
-            return name
-
-        # 2) SequenceMatcher — 원본 & 접미사 제거 버전 중 높은 점수 사용
-        score = max(
-            difflib.SequenceMatcher(None, clean_new, clean_name).ratio(),
-            difflib.SequenceMatcher(None, core_new, core_name).ratio() if core_new and core_name else 0,
-        )
-        if score > best_score:
-            best_score = score
-            best_match = name
-
-    return best_match if best_score >= threshold else new_name
-
-
-if run_button:
-
-    report_summaries = ""
-    # {fund_name: {year: {asset: weight}}}
-    fund_timeseries = {}
-
-    if uploaded_reports and client:
-
-        st.info(
-            f"{len(uploaded_reports)}개 PDF 요약 중... (파일당 약 10~20초 소요)"
-        )
-
-        summary_bar = st.progress(0)
-
-        for i, report in enumerate(uploaded_reports):
-
-            with st.spinner(f"요약 중: {report.name}"):
-                summary, fund_name, year, allocation, prior_year, prior_allocation = summarize_pdf(report)
-                report_summaries += summary + "\n\n"
-                if fund_name:
-                    canonical = normalize_fund_name(fund_name, list(fund_timeseries.keys()))
-                    if canonical not in fund_timeseries:
-                        fund_timeseries[canonical] = {}
-                    if allocation:
-                        fund_timeseries[canonical][year or "Unknown"] = allocation
-                    if prior_allocation and prior_year:
-                        # 같은 표에서 추출한 비교연도 데이터도 저장 (중복 시 덮어쓰지 않음)
-                        if prior_year not in fund_timeseries[canonical]:
-                            fund_timeseries[canonical][prior_year] = prior_allocation
-
-            summary_bar.progress((i + 1) / len(uploaded_reports))
-
-        summary_bar.empty()
-        st.success(f"{len(uploaded_reports)}개 PDF 요약 완료")
-        st.session_state["fund_timeseries"] = fund_timeseries
-
-    with st.spinner(
-        "Collecting news..."
-    ):
-
-        articles = collect_news()
-
-    st.success(
-        f"{len(articles)} articles collected"
-    )
-
-    result = None
-
-    if client:
-
-        with st.spinner("AI analyzing..."):
-            result = analyze_intelligence(articles, report_summaries)
-
-    # session_state에 저장 (드롭다운 선택 시 유지)
-    st.session_state["result"] = result
-    st.session_state["articles"] = articles
-
-else:
-    # run_button이 눌리지 않았을 때 session_state에서 복원
-    result = st.session_state.get("result", None)
-    articles = st.session_state.get("articles", [])
-    fund_timeseries = st.session_state.get("fund_timeseries", {})
-
-
-# =====================================================
-# 결과 렌더링 (session_state 기반 → 드롭다운 선택해도 유지)
-# =====================================================
-
-if result or fund_timeseries or articles:
-
-    # ==========================================
-    # EXECUTIVE RADAR
-    # ==========================================
-
-    st.header("📊 Executive Radar")
-
-    cols = st.columns(5)
-    assets = ["Private Equity", "Private Credit", "Infrastructure", "Real Estate", "Secondaries"]
-
-    for i, asset in enumerate(assets):
-        value = result.get("signals", {}).get(asset, "-") if result else "-"
-        cols[i].metric(asset, value)
-
-    # ==========================================
-    # AI BRIEF
-    # ==========================================
-
-    st.header("🧠 AI Brief")
-    if result:
-        st.info(result.get("brief", ""))
-
-    # ==========================================
-    # OPPORTUNITIES
-    # ==========================================
-
-    st.header("🎯 Opportunity Watchlist")
-    if result:
-        for item in result.get("opportunities", []):
-            st.success(item)
-
-    # ==========================================
-    # RISK ALERT
-    # ==========================================
-
-    st.header("🚨 Risk Alerts")
-    if result:
-        alerts = result.get("risk_alerts", [])
-        if alerts:
-            for alert in alerts:
-                st.warning(alert)
+def main():
+    while True:
+        print(MENU)
+        choice = input("선택 (1-6 / q): ").strip().lower()
+        if choice == "q":
+            print("\n  bye!\n"); break
+        elif choice in VIEW_MAP:
+            f = ask_filter(); print()
+            VIEW_MAP[choice](filter_fund=f)
+            input("  [엔터] 메뉴로 돌아가기...")
+        elif choice == "5":
+            f = ask_filter(); print()
+            show_allocation_detail(f)
+            show_geographic_exposure(f)
+            show_returns_by_asset_class(f)
+            show_multi_year_returns(f)
+            input("  [엔터] 메뉴로 돌아가기...")
+        elif choice == "6":
+            list_funds()
+            input("  [엔터] 메뉴로 돌아가기...")
         else:
-            st.success("No Risk Alerts")
+            print("  잘못된 입력입니다.\n")
 
-    # ==========================================
-    # INSURER IMPLICATIONS
-    # ==========================================
-
-    st.header("🏢 Korean Insurer Implications")
-    if result:
-        st.write(result.get("implications", ""))
-
-    # ==========================================
-    # PENSION MONITOR
-    # ==========================================
-
-    st.header("🏦 Pension Allocation Monitor")
-
-    if fund_timeseries:
-        fund_names = list(fund_timeseries.keys())
-        selected_fund = st.selectbox("Select Pension Fund", fund_names, key="sel_fund")
-        years_available = sorted(fund_timeseries[selected_fund].keys(), reverse=True)
-        selected_year = st.selectbox("Select Year", years_available, key="sel_year")
-
-        alloc = fund_timeseries[selected_fund][selected_year]
-        df_bar = pd.DataFrame({
-            "Asset": list(alloc.keys()),
-            "Weight": [round(float(v), 1) for v in alloc.values()]
-        }).sort_values("Weight", ascending=True)
-
-        total = df_bar["Weight"].sum()
-        note = f" (합계 {total:.1f}% — 레버리지 구조)" if not (90 <= total <= 110) else ""
-
-        fig = px.bar(
-            df_bar, x="Weight", y="Asset", orientation="h",
-            title=f"{selected_fund} ({selected_year}) Allocation{note}",
-            text="Weight",
-            labels={"Weight": "Asset Mix (%)", "Asset": ""}
-        )
-        fig.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
-        fig.update_layout(xaxis_title="Asset Mix (%)", yaxis_title="")
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("PDF를 업로드하고 Run Analysis를 실행하면 실제 배분 데이터가 표시됩니다.")
-
-    # ==========================================
-    # ALLOCATION CHANGE TRACKER
-    # ==========================================
-
-    st.header("📈 Allocation Change Tracker")
-
-    if fund_timeseries:
-        multi_year_funds = {f: d for f, d in fund_timeseries.items() if len(d) >= 2}
-
-        if multi_year_funds:
-            tracker_fund = st.selectbox(
-                "펀드 선택 (시계열)", list(multi_year_funds.keys()), key="tracker_fund"
-            )
-            rows = []
-            for year, alloc_dict in sorted(multi_year_funds[tracker_fund].items()):
-                total = sum(float(v) for v in alloc_dict.values())
-                for asset, weight in alloc_dict.items():
-                    rows.append({
-                        "Year": str(year),
-                        "Asset": asset,
-                        "Weight": round(float(weight) / total * 100, 1) if total else float(weight)
-                    })
-            df_bar = pd.DataFrame(rows)
-            bar = px.bar(
-                df_bar, x="Year", y="Weight", color="Asset",
-                title=f"{tracker_fund} — Allocation Change Over Time (%)",
-                barmode="stack", range_y=[0, 100]
-            )
-            bar.update_layout(yaxis_title="Weight (%)")
-            st.plotly_chart(bar, use_container_width=True)
-
-        else:
-            st.caption("같은 펀드의 여러 연도 보고서를 업로드하면 시계열 차트가 표시됩니다. 현재는 펀드 간 비교 차트를 표시합니다.")
-            rows = []
-            for fund_name, ydata in fund_timeseries.items():
-                for year, alloc_dict in ydata.items():
-                    total = sum(float(v) for v in alloc_dict.values())
-                    for asset, weight in alloc_dict.items():
-                        rows.append({
-                            "Fund": f"{fund_name} ({year})",
-                            "Asset": asset,
-                            "Weight": round(float(weight) / total * 100, 1) if total else float(weight)
-                        })
-            df_bar = pd.DataFrame(rows)
-            bar = px.bar(
-                df_bar, x="Fund", y="Weight", color="Asset",
-                title="Uploaded Funds — Asset Allocation Comparison (%)",
-                barmode="stack", range_y=[0, 100]
-            )
-            bar.update_layout(xaxis_tickangle=-20, yaxis_title="Weight (%)")
-            st.plotly_chart(bar, use_container_width=True)
-
-    else:
-        st.info("같은 펀드의 여러 연도 보고서를 업로드하면 시계열 변화를 추적합니다.")
-
-    # ==========================================
-    # NEWS
-    # ==========================================
-
-    st.header("📰 Latest News")
-
-    for row in articles[:30]:
-        with st.expander(row["title"]):
-            st.write(row["description"])
-            if row["link"]:
-                st.markdown(f"[Original Article]({row['link']})")
-
-else:
-    st.info("Click 'Run Analysis' to start.")
+if __name__ == "__main__":
+    main()
