@@ -238,6 +238,31 @@ ASSET_CANONICAL = {
     "renewable energy": "Renewable Energy Infrastructure",
 }
 
+# 알려진 부모-자식 계층 (canonical 이름 기준)
+# 자식들의 합이 부모 값에 가까우면 부모를 제거
+SUBTOTAL_PARENTS = {
+    "Equity":             ["Public Equity", "Private Equity", "Venture Growth"],
+    "Inflation Sensitive":["Commodities", "Natural Resources", "Inflation Hedge"],
+    "Real Assets":        ["Real Estate", "Infrastructure", "Renewable Energy Infrastructure"],
+    "Alternatives":       ["Absolute Return", "Private Credit", "Secondaries"],
+}
+
+def remove_subtotals(allocation: dict, tol: float = 0.05) -> dict:
+    """
+    부모(소계) 항목과 자식 항목이 동시에 존재할 때 부모를 제거.
+    tol: 자식 합계가 부모 값의 (1±tol) 범위면 소계로 판단.
+    """
+    to_remove = set()
+    for parent, children in SUBTOTAL_PARENTS.items():
+        if parent not in allocation:
+            continue
+        child_sum = sum(allocation[c] for c in children if c in allocation)
+        parent_val = allocation[parent]
+        if parent_val > 0 and abs(child_sum - parent_val) / parent_val <= tol:
+            to_remove.add(parent)
+    return {k: v for k, v in allocation.items() if k not in to_remove}
+
+
 def normalize_asset_name(raw_name: str) -> str:
     """자산군 이름을 canonical 형태로 정규화."""
     key = re.sub(r"[^a-z0-9 ]", "", raw_name.lower()).strip()
@@ -369,6 +394,7 @@ PAGES:
             canonical = normalize_asset_name(k)
             allocation[canonical] = allocation.get(canonical, 0) + val
 
+        allocation = remove_subtotals(allocation)
         total = sum(allocation.values())
 
         if not found or not allocation or total < 30:
