@@ -138,7 +138,7 @@ def build_allocation_table(selected_funds):
     if not cols:
         return pd.DataFrame()
     df = pd.DataFrame(data).T.reindex(columns=cols)
-    df = df.applymap(lambda v: f"{v:.1f}%" if pd.notna(v) else "–")
+    df = df.map(lambda v: f"{v:.1f}%" if pd.notna(v) else "–")
     return df
 
 def build_geo_table(selected_funds):
@@ -153,7 +153,7 @@ def build_geo_table(selected_funds):
     if not cols:
         return pd.DataFrame()
     df = pd.DataFrame(data).T.reindex(columns=cols)
-    df = df.applymap(lambda v: f"{v:.1f}%" if pd.notna(v) else "–")
+    df = df.map(lambda v: f"{v:.1f}%" if pd.notna(v) else "–")
     return df
 
 def build_returns_table(selected_funds):
@@ -170,7 +170,7 @@ def build_returns_table(selected_funds):
     df = pd.DataFrame(data).T.reindex(columns=cols)
     # 색상을 위해 포맷 전에 복사
     raw = df.copy()
-    df_fmt = df.applymap(lambda v: fmt_pct(v, sign=True) if pd.notna(v) else "–")
+    df_fmt = df.map(lambda v: fmt_pct(v, sign=True) if pd.notna(v) else "–")
     return df_fmt, raw
 
 def build_multiyear_table(selected_funds):
