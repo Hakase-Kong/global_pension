@@ -580,10 +580,10 @@ if page == "🏠 Radar 메인":
         with cols[i]:
             st.markdown(f"""
 <div class='metric-card'>
-<b style='font-size:15px;color:#f8fafc'>{fund}</b><br>
-<span style='color:#aab8c8;font-size:12px'>{m['country']} | {m['type']}</span><br>
-<span style='font-size:13px;color:#cbd5e1'>AUM: <b style='color:#f8fafc'>{m['aum']}</b></span><br>
-<span style='font-size:13px;color:#cbd5e1'>대체투자: <b style='color:#90caf9;font-size:15px'>{alt_cur:.1f}%</b>
+<b style='font-size:15px;color:#0f172a'>{fund}</b><br>
+<span style='color:#64748b;font-size:12px'>{m['country']} | {m['type']}</span><br>
+<span style='font-size:13px;color:#475569'>AUM: <b style='color:#0f172a'>{m['aum']}</b></span><br>
+<span style='font-size:13px;color:#475569'>대체투자: <b style='color:#1d4ed8;font-size:15px'>{alt_cur:.1f}%</b>
  <span style='font-size:12px;color:{"#81c995" if delta>0 else "#f48fb1"}'>{dstr}</span></span>
 </div>""", unsafe_allow_html=True)
 
@@ -606,10 +606,10 @@ if page == "🏠 Radar 메인":
 
     # 표 렌더링
     header_html = "<table style='width:100%;border-collapse:collapse;font-size:14px'>"
-    header_html += "<tr style='background:#1a2535'><th style='padding:10px;text-align:left;color:#cbd5e1'>자산군</th>"
+    header_html += "<tr style='background:#1a2535'><th style='padding:10px;text-align:left;color:#475569'>자산군</th>"
     for fund in FUNDS:
-        header_html += f"<th style='padding:10px;text-align:center;color:#f8fafc'>{fund}</th>"
-    header_html += "<th style='padding:10px;text-align:center;color:#cbd5e1'>자산군 특징</th></tr>"
+        header_html += f"<th style='padding:10px;text-align:center;color:#f1f5f9'>{fund}</th>"
+    header_html += "<th style='padding:10px;text-align:center;color:#94a3b8'>자산군 특징</th></tr>"
 
     is_alt = {a: (a in ALT_CLASSES) for a in ALL_CLASSES}
     for asset in ALL_CLASSES:
@@ -636,7 +636,7 @@ if page == "🏠 Radar 메인":
         alt_pre = sum(ALLOC[fund][a][1] for a in ALT_CLASSES if ALLOC[fund].get(a,(None,None))[1] is not None)
         arr = delta_arrow(alt_cur, alt_pre)
         ac  = "#81c995" if alt_cur>alt_pre+0.2 else ("#f48fb1" if alt_cur<alt_pre-0.2 else "#aab8c8")
-        header_html += f"<td style='padding:10px;text-align:center;font-weight:bold;font-size:15px;color:#90caf9'>{alt_cur:.1f}%<br><span style='font-size:11px;color:{ac}'>{arr}</span></td>"
+        header_html += f"<td style='padding:10px;text-align:center;font-weight:bold;font-size:15px;color:#1d4ed8'>{alt_cur:.1f}%<br><span style='font-size:11px;color:{ac}'>{arr}</span></td>"
     header_html += "<td></td></tr></table>"
 
     st.markdown(header_html, unsafe_allow_html=True)
@@ -695,8 +695,8 @@ elif page == "🏦 기관별 상세":
             # 헤더
             st.markdown(f"""
 <div class='fund-header'>
-<span style='font-size:20px;font-weight:bold;color:#e2e8f0'>{fund}</span>
-&nbsp;&nbsp;<span style='color:#94a3b8'>{meta['country']} | {meta['type']} | AUM {meta['aum']}</span>
+<span style='font-size:20px;font-weight:bold;color:#334155'>{fund}</span>
+&nbsp;&nbsp;<span style='color:#64748b'>{meta['country']} | {meta['type']} | AUM {meta['aum']}</span>
 </div>""", unsafe_allow_html=True)
 
             # ── 자산배분 가로 막대차트 + 대체투자 카드 ─────────────
@@ -720,7 +720,7 @@ elif page == "🏦 기관별 상세":
                     marker_color=bar_colors,
                     text=[f"{v:.1f}%" for v in bar_values],
                     textposition="outside",
-                    textfont=dict(size=13, color="#e2e8f0"),
+                    textfont=dict(size=13, color="#1e293b"),
                     cliponaxis=False,
                 ))
                 fig_bar.update_layout(
@@ -732,7 +732,7 @@ elif page == "🏦 기관별 상세":
                                range=[0, max(bar_values)*1.35],
                                tickfont=dict(color=TICK_COLOR, size=11),
                                showgrid=True),
-                    yaxis=dict(tickfont=dict(color="#f1f5f9", size=13),
+                    yaxis=dict(tickfont=dict(color="#1e293b", size=13),
                                categoryorder="array",
                                categoryarray=list(reversed(bar_labels))),
                     margin=dict(l=10, r=70, t=44, b=10),
@@ -743,7 +743,7 @@ elif page == "🏦 기관별 상세":
 
             with c2:
                 # 대체투자 전기 대비 카드
-                st.markdown("<p style='font-size:15px;font-weight:700;color:#90caf9;margin-bottom:12px'>대체투자 비중 변화 (전기 대비)</p>", unsafe_allow_html=True)
+                st.markdown("<p style='font-size:15px;font-weight:700;color:#1d4ed8;margin-bottom:12px'>대체투자 비중 변화 (전기 대비)</p>", unsafe_allow_html=True)
                 for a in ALT_CLASSES:
                     cur, pre = alloc.get(a,(None,None))
                     if cur is None: continue
@@ -820,7 +820,7 @@ elif page == "🏦 기관별 상세":
                 st.plotly_chart(fig_total, use_container_width=True, key=f"total_{fund}")
 
             # ── 5개년 전체 자산배분 스택 바 + 리밸런싱 분석 ──────────
-            st.markdown("<p style='font-size:16px;font-weight:700;color:#93c5fd;margin:12px 0 6px'>📊 전체 자산배분 5개년 변화</p>", unsafe_allow_html=True)
+            st.markdown("<p style='font-size:16px;font-weight:700;color:#1d4ed8;margin:12px 0 6px'>📊 전체 자산배분 5개년 변화</p>", unsafe_allow_html=True)
             alloc_ts_fund2 = ALLOC_TS.get(fund, {})
             if alloc_ts_fund2:
                 years2 = [norm_year(yr) for yr in alloc_ts_fund2.keys()]
@@ -874,35 +874,35 @@ elif page == "🏦 기관별 상세":
                 alt_color = "#4ade80" if alt_delta > 0 else "#f87171"
 
                 inc_items = "".join(
-                    f"<li><b style='color:#60a5fa'>{c}</b>: {first_a.get(c,0):.1f}% → {last_a.get(c,0):.1f}% "
+                    f"<li><b style='color:#1d4ed8'>{c}</b>: {first_a.get(c,0):.1f}% → {last_a.get(c,0):.1f}% "
                     f"<span style='color:#4ade80'>(+{d:.1f}%p)</span></li>"
                     for c,d in top_inc
-                ) or "<li style='color:#94a3b8'>뚜렷한 확대 자산군 없음</li>"
+                ) or "<li style='color:#64748b'>뚜렷한 확대 자산군 없음</li>"
 
                 dec_items = "".join(
                     f"<li><b style='color:#a78bfa'>{c}</b>: {first_a.get(c,0):.1f}% → {last_a.get(c,0):.1f}% "
                     f"<span style='color:#f87171'>({d:.1f}%p)</span></li>"
                     for c,d in top_dec
-                ) or "<li style='color:#94a3b8'>뚜렷한 축소 자산군 없음</li>"
+                ) or "<li style='color:#64748b'>뚜렷한 축소 자산군 없음</li>"
 
                 rebal_html = f"""
 <div style='background:#162032;border:1px solid #2d4a6e;border-radius:10px;padding:18px 22px;margin-top:12px'>
-  <p style='font-size:15px;font-weight:700;color:#93c5fd;margin:0 0 10px'>
+  <p style='font-size:15px;font-weight:700;color:#1d4ed8;margin:0 0 10px'>
     🔄 리밸런싱 분석 ({norm_year(first_yr_raw)} → {norm_year(last_yr_raw)})
   </p>
-  <p style='font-size:13px;color:#e2e8f0;margin:0 0 6px'>
-    대체투자 합계: <b style='color:#f1f5f9'>{alt_start:.1f}%</b> →
+  <p style='font-size:13px;color:#334155;margin:0 0 6px'>
+    대체투자 합계: <b style='color:#1e293b'>{alt_start:.1f}%</b> →
     <b style='color:{alt_color};font-size:15px'>{alt_end:.1f}%</b>
     &nbsp;<span style='color:{alt_color}'>{alt_arrow} {abs(alt_delta):.1f}%p</span>
   </p>
   <div style='display:flex;gap:24px;margin-top:10px'>
     <div style='flex:1'>
       <p style='font-size:12px;font-weight:700;color:#4ade80;margin:0 0 6px'>📈 비중 확대</p>
-      <ul style='margin:0;padding-left:16px;font-size:13px;color:#e2e8f0;line-height:1.9'>{inc_items}</ul>
+      <ul style='margin:0;padding-left:16px;font-size:13px;color:#334155;line-height:1.9'>{inc_items}</ul>
     </div>
     <div style='flex:1'>
       <p style='font-size:12px;font-weight:700;color:#f87171;margin:0 0 6px'>📉 비중 축소</p>
-      <ul style='margin:0;padding-left:16px;font-size:13px;color:#e2e8f0;line-height:1.9'>{dec_items}</ul>
+      <ul style='margin:0;padding-left:16px;font-size:13px;color:#334155;line-height:1.9'>{dec_items}</ul>
     </div>
   </div>
   <p style='font-size:12px;color:#64748b;margin:10px 0 0'>
@@ -948,11 +948,11 @@ elif page == "🏦 기관별 상세":
                 st.plotly_chart(fig_ret, use_container_width=True, key=f"ret_{fund}")
 
             with c4:
-                st.markdown("<p style='font-size:15px;font-weight:700;color:#90caf9'>기관 특징</p>", unsafe_allow_html=True)
+                st.markdown("<p style='font-size:15px;font-weight:700;color:#1d4ed8'>기관 특징</p>", unsafe_allow_html=True)
                 st.markdown(f"<p style='font-size:13px;color:#334155;line-height:1.7'>{meta['description']}</p>", unsafe_allow_html=True)
-                st.markdown("<p style='font-size:15px;font-weight:700;color:#90caf9;margin-top:12px'>최근 운용 방향</p>", unsafe_allow_html=True)
+                st.markdown("<p style='font-size:15px;font-weight:700;color:#1d4ed8;margin-top:12px'>최근 운용 방향</p>", unsafe_allow_html=True)
                 st.markdown(f"<p style='font-size:13px;color:#334155;line-height:1.7'>{meta['strategy']}</p>", unsafe_allow_html=True)
-                st.markdown("<p style='font-size:15px;font-weight:700;color:#fbbf24;margin-top:12px'>⚡ 최근 이슈</p>", unsafe_allow_html=True)
+                st.markdown("<p style='font-size:15px;font-weight:700;color:#b45309;margin-top:12px'>⚡ 최근 이슈</p>", unsafe_allow_html=True)
                 st.markdown(f"<div style='background:#fffbeb;border-left:3px solid #f59e0b;border-radius:4px;padding:10px 14px;font-size:13px;color:#78350f;line-height:1.7'>{issue}</div>", unsafe_allow_html=True)
 
             # AI 상세 분석
@@ -1026,9 +1026,9 @@ elif page == "📊 자산군별 비교":
                     rank_html = (
                         f"<div style='display:flex;justify-content:space-between;align-items:center;"
                         f"padding:6px 0;border-bottom:1px solid #1e293b'>"
-                        f"<span style='color:#94a3b8;font-size:12px;min-width:28px'><b style='color:#f1f5f9'>{int(row['순위'])}</b>위</span>"
-                        f"<span style='flex:1;padding:0 8px;font-size:13px;font-weight:600;color:#f1f5f9'>{row['기관']}</span>"
-                        f"<span style='font-size:15px;font-weight:700;color:#60a5fa'>{pct_badge(cur)}</span>"
+                        f"<span style='color:#64748b;font-size:12px;min-width:28px'><b style='color:#1e293b'>{int(row['순위'])}</b>위</span>"
+                        f"<span style='flex:1;padding:0 8px;font-size:13px;font-weight:600;color:#1e293b'>{row['기관']}</span>"
+                        f"<span style='font-size:15px;font-weight:700;color:#1d4ed8'>{pct_badge(cur)}</span>"
                         f"&nbsp;&nbsp;{delta_txt}</div>"
                     )
                     st.markdown(rank_html, unsafe_allow_html=True)
@@ -1107,7 +1107,7 @@ elif page == "📊 자산군별 비교":
                 df_pivot = df_pivot[sorted_cols]
 
                 st.markdown(
-                    "<p style='font-size:14px;font-weight:700;color:#93c5fd;margin:14px 0 4px'>"
+                    "<p style='font-size:14px;font-weight:700;color:#1d4ed8;margin:14px 0 4px'>"
                     "📋 연도별 비중 요약표 "
                     "<span style='font-size:11px;font-weight:400;color:#64748b'>"
                     "— 셀 색상이 짙을수록 해당 연도 비중이 높음. 행=기관, 열=연도</span></p>",
@@ -1304,7 +1304,7 @@ elif page == "📁 Data Room":
                     text="비중(%)"
                 )
                 fig_dr.update_traces(texttemplate="%{text:.1f}%", textposition="outside",
-                                     textfont=dict(color="#f1f5f9"))
+                                     textfont=dict(color="#1e293b"))
                 fig_dr.update_layout(paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
                                      font=dict(color=TICK_COLOR, size=12))
                 st.plotly_chart(fig_dr, use_container_width=True)
