@@ -819,7 +819,7 @@ def score_news_relevance(title, desc, fund_kws, asset_kws=None):
 
 def fetch_fund_news(fund, top_n=5):
     """기관별 상세 전용: 관련성 높은 뉴스만 상위 top_n개 반환"""
-    kws = NEWS_KEYWORDS.get(fund, [])
+    kws = NEWS_KEYWORDS.get(fund) or [fund]
     asset_kws = []
     for kw_list in ASSET_KEYWORDS.values():
         asset_kws.extend(kw_list[:2])
@@ -889,14 +889,75 @@ def ai_extract_pdf(file):
     prompt = f"""Pension annual report '{fname}'. Extract allocation table. Return JSON:
 {{
   "fund_name":"<name>","report_year":"<year>","prior_year":"<year or null>",
-  "summary":"<80 words>",
+  "summary":"<80 words, Korean>",
+  "aum":"<total AUM with currency, e.g. 'C$300.5B', or null>",
+  "returns":{{"<year>":<total net return pct float>}},
   "allocation":{{"<asset class>":<pct float>}},
   "prior_allocation":{{"<asset class>":<pct float>}},
   "allocation_found":true/false
 }}
 Rules: leaf-level rows only, exclude negatives, include ALL rows.
+"returns" = total fund net return by year if disclosed (else empty object).
 PAGES:\n{text}"""
     return ai_call(prompt, model="gpt-4o")
+
+# ══════════════════════════════════════════════════════════════
+# 4-1. 사용자 업로드 기금 저장소 (Data Room → 대시보드 연동)
+# ══════════════════════════════════════════════════════════════
+
+CUSTOM_FUNDS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "custom_funds.json")
+
+def load_custom_funds():
+    try:
+        with open(CUSTOM_FUNDS_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def save_custom_funds(data):
+    try:
+        with open(CUSTOM_FUNDS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        st.error(f"저장 실패: {e}")
+        return False
+
+# AI 추출 자산군명 → 표준 7개 자산군 매핑 규칙 (선언 순서대로 우선 매칭)
+STD_CLASS_RULES = [
+    ("Private Equity",   ["private equit","buyout","venture","growth equit","사모주식"]),
+    ("Private Credit",   ["credit","direct lending","private debt","사모대출"]),
+    ("Real Estate",      ["real estate","property","reit","부동산"]),
+    ("Infrastructure",   ["infrastructure","energy","utilit","natural resource",
+                          "timber","renewable","인프라"]),
+    ("Hedge Fund/Other", ["hedge","absolute return","multi-asset","commodit",
+                          "alternativ","other","기타"]),
+    ("Public Equity",    ["equit","stock","capital market","주식"]),
+    ("Fixed Income",     ["fixed income","bond","government","treasur","cash",
+                          "money market","short-term","채권","현금"]),
+]
+
+def map_to_std_classes(raw_alloc):
+    """추출된 자유형식 자산군명을 표준 7개 자산군으로 합산"""
+    out = {}
+    for name, val in (raw_alloc or {}).items():
+        try:
+            v = float(val)
+        except (TypeError, ValueError):
+            continue
+        if v < 0:
+            continue
+        low = str(name).lower()
+        std = next((s for s, kws in STD_CLASS_RULES if any(k in low for k in kws)),
+                   "Hedge Fund/Other")
+        out[std] = round(out.get(std, 0) + v, 1)
+    return out
+
+def extract_year4(y, fallback=None):
+    """'FY2025', '2024/25' 등에서 4자리 연도 추출"""
+    m = re.search(r"(19|20)\d{2}", str(y or ""))
+    return m.group(0) if m else fallback
 
 # ══════════════════════════════════════════════════════════════
 # 5. AI 분석
@@ -1053,6 +1114,26 @@ def chart_layout(**kwargs):
 if "nav_fund"   not in st.session_state: st.session_state["nav_fund"]   = None
 if "_page_idx"  not in st.session_state: st.session_state["_page_idx"]  = 0
 
+# ── 사용자 업로드 기금 병합 (custom_funds.json → 전 페이지 반영) ──
+CUSTOM_FUNDS = load_custom_funds()
+for _name, _cf in CUSTOM_FUNDS.items():
+    if _name in FUND_META:
+        continue
+    _m = _cf.get("meta", {})
+    FUNDS.append(_name)
+    FUND_META[_name] = {
+        "country": _m.get("country", "🌐 Custom"), "type": _m.get("type", "사용자 업로드"),
+        "aum": _m.get("aum") or "–", "aum_usd": _m.get("aum_usd", 0),
+        "fy_end": _m.get("fy_end", "–"), "currency": _m.get("currency", "–"),
+        "description": _m.get("description", ""), "strategy": _m.get("strategy", ""),
+    }
+    ALLOC[_name]      = {k: tuple(v) for k, v in _cf.get("alloc", {}).items()}
+    ALLOC_TS[_name]   = _cf.get("alloc_ts", {})
+    RETURNS_TS[_name] = _cf.get("returns_ts", {})
+    RECENT_ISSUES[_name]       = _cf.get("issue", "Data Room 업로드 데이터")
+    FUND_CHARACTERISTIC[_name] = _m.get("description", "")[:120]
+    NEWS_KEYWORDS[_name]       = [_name.split("(")[0].strip()]
+
 PAGE_OPTIONS = [
     "🏠 Radar 메인",
     "🏦 기관별 상세",
@@ -1106,11 +1187,16 @@ with st.sidebar:
         "</div>"
     )
     for rank, flag, name, aum, cat, fund_key in RANKING_DATA:
-        bg   = "#0d1117" if rank % 2 == 1 else "#111827"
-        star = " <span style='color:#3b82f6'>★</span>" if fund_key else ""
-        name_style = "color:#93c5fd;font-weight:700" if fund_key else ""
+        if fund_key:   # ★ 분석 대상 → 파란색 하이라이트
+            row_style  = "background:#1a2a40;border-left:3px solid #3b82f6"
+            name_style = "color:#93c5fd;font-weight:700"
+            star       = " <span style='color:#3b82f6'>★</span>"
+        else:
+            row_style  = f"background:{'#0d1117' if rank % 2 == 1 else '#111827'}"
+            name_style = ""
+            star       = ""
         rank_html += (
-            f"<div class='rank-row' style='background:{bg}'>"
+            f"<div class='rank-row' style='{row_style}'>"
             f"<span style='width:20px;color:#64748b'>{rank}</span>"
             f"<span style='flex:1;{name_style}'>{flag} {name}{star}</span>"
             f"<span style='width:52px;text-align:right;color:#94a3b8'>{aum}</span>"
@@ -1391,9 +1477,9 @@ elif page == "🏦 기관별 상세":
     for tab_idx, tab in enumerate(fund_tabs):
         fund = ordered_funds[tab_idx]
         meta   = FUND_META[fund]
-        alloc  = ALLOC[fund]
-        ret_ts = RETURNS_TS[fund]
-        issue  = RECENT_ISSUES[fund]
+        alloc  = ALLOC.get(fund, {})
+        ret_ts = RETURNS_TS.get(fund) or {"–": 0.0}   # 업로드 기금: 수익률 미공시 대비
+        issue  = RECENT_ISSUES.get(fund, "")
 
         with tab:
             # ── 기관 개요 카드 ───────────────────────────────────
@@ -2134,17 +2220,44 @@ elif page == "📰 News · Issues · Deals":
     if st.button("🔄 뉴스 새로고침"):
         st.cache_data.clear()
 
-    with st.spinner("뉴스 수집 중..."):
-        articles = fetch_news(all_kws)
+    with st.spinner("뉴스 수집 중... (네이버 + Google News 영문·국문)"):
+        articles = list(fetch_news(all_kws))
+        seen_k = {re.sub(r"\W", "", a["title"].lower())[:40] for a in articles}
+
+        def _add(arts):
+            for a in arts:
+                k = re.sub(r"\W", "", a["title"].lower())[:40]
+                if k and k not in seen_k:
+                    seen_k.add(k)
+                    articles.append(a)
+
+        # 기관별 해외 검색 (영문 키워드 보유 기관)
+        for f_, kws_ in NEWS_KEYWORDS.items():
+            en_kw = next((k for k in kws_ if k.isascii()), None)
+            if en_kw:
+                _add(fetch_google_news(
+                    f'"{en_kw}" (investment OR pension OR fund) when:30d', "en", max_items=8))
+        # 자산군별 전용 검색 (영문+국문, 기관투자 맥락 필터 적용)
+        for ac_ in ALT_CLASSES:
+            _add(fetch_asset_news(ac_))
 
     if not articles:
-        st.info("Naver API 키가 없으면 뉴스가 표시되지 않습니다.")
+        st.info("Naver API 키가 없으면 한국 뉴스가 표시되지 않습니다.")
 
     tagged = []
     for a in articles:
         ftags, atags = tag_article(a["title"], a["description"])
         risk = risk_level(a["title"], a["description"])
+        # 관련성 필터: 기관 또는 자산군 기준 최고 점수가 기준 미달이면 제외
+        q = 0
+        for kws_ in NEWS_KEYWORDS.values():
+            q = max(q, score_news_relevance(a["title"], a["description"], kws_))
+        for kws_ in ASSET_KEYWORDS.values():
+            q = max(q, score_news_relevance(a["title"], a["description"], kws_))
+        if q < 4 and not (ftags and q >= 3):
+            continue
         tagged.append({**a, "fund_tags":ftags, "asset_tags":atags, "risk":risk})
+    tagged.sort(key=_pub_ts, reverse=True)
 
     def passes(art):
         if "전체" not in fund_filter  and not any(f in art["fund_tags"]  for f in fund_filter):  return False
@@ -2153,7 +2266,7 @@ elif page == "📰 News · Issues · Deals":
         return True
 
     filtered = [a for a in tagged if passes(a)]
-    st.caption(f"총 {len(filtered)}건 (전체 {len(tagged)}건)")
+    st.caption(f"총 {len(filtered)}건 표시 (관련성 필터 통과 {len(tagged)}건, 최신순)")
 
     for art in filtered[:30]:
         risk_cls = {"🔴 High":"badge-risk-red","🟡 Medium":"badge-risk-yel","🟢 Low":"badge-risk-grn"}.get(art["risk"],"badge-risk-grn")
@@ -2208,16 +2321,68 @@ elif page == "📁 Data Room":
                 df_edit = pd.DataFrame({"자산군":list(alloc_dr),"AI 추출 (%)": [round(v,1) for v in alloc_dr.values()],"검수 수정 (%)": [round(v,1) for v in alloc_dr.values()]})
                 edited = st.data_editor(df_edit, key=f"edit_{item['file']}", use_container_width=True, hide_index=True)
                 if st.button("✅ 대시보드에 반영", key=f"save_{item['file']}"):
-                    saved = st.session_state.get("dr_saved",{})
-                    saved[(item.get("fund_name",""), item.get("report_year",""))] = dict(zip(edited["자산군"], edited["검수 수정 (%)"]))
-                    st.session_state["dr_saved"] = saved
-                    st.success("저장 완료!")
+                    name = (item.get("fund_name") or item["file"].rsplit(".", 1)[0]).strip()
+                    yr   = extract_year4(item.get("report_year"),
+                                         str(datetime.now(timezone.utc).year))
+                    pyr  = extract_year4(item.get("prior_year"))
+                    std_cur = map_to_std_classes(dict(zip(edited["자산군"],
+                                                          edited["검수 수정 (%)"])))
+                    std_pre = map_to_std_classes(item.get("prior_allocation", {}))
+                    if not std_cur:
+                        st.warning("반영할 배분 데이터가 없습니다.")
+                    else:
+                        cf       = CUSTOM_FUNDS.get(name, {})
+                        alloc_ts = cf.get("alloc_ts", {})
+                        if pyr and std_pre:
+                            alloc_ts[pyr] = std_pre
+                        alloc_ts[yr] = std_cur
+                        alloc_ts = dict(sorted(alloc_ts.items()))
+                        returns_ts = cf.get("returns_ts", {})
+                        for ry, rv in (item.get("returns") or {}).items():
+                            ry4 = extract_year4(ry)
+                            try:
+                                if ry4: returns_ts[ry4] = float(rv)
+                            except (TypeError, ValueError):
+                                pass
+                        CUSTOM_FUNDS[name] = {
+                            "meta": {
+                                "country": "🌐 Custom", "type": "사용자 업로드",
+                                "aum": item.get("aum") or "–",
+                                "description": item.get("summary", ""),
+                            },
+                            "alloc": {k: [std_cur.get(k), std_pre.get(k)]
+                                      for k in set(std_cur) | set(std_pre)},
+                            "alloc_ts": alloc_ts,
+                            "returns_ts": dict(sorted(returns_ts.items())),
+                            "issue": f"Data Room 업로드: {item['file']} ({yr} 보고서)",
+                        }
+                        if save_custom_funds(CUSTOM_FUNDS):
+                            st.success(
+                                f"'{name}' 저장 완료! Radar 메인·기관별 상세·"
+                                f"자산군별 비교 페이지에 반영됩니다."
+                            )
             else:
                 st.warning("배분 데이터를 추출하지 못했습니다.")
 
-    saved = st.session_state.get("dr_saved",{})
-    if saved:
-        st.divider()
-        st.markdown("##### ✅ 검수 완료 데이터")
-        for (fn, yr), alloc_s in saved.items():
-            st.markdown(f"• **{fn} ({yr})** – {len(alloc_s)}개 항목")
+    # ── 등록된 사용자 기금 관리 (영구 저장: custom_funds.json) ──
+    st.divider()
+    st.markdown("##### 🗂 등록된 사용자 기금")
+    if CUSTOM_FUNDS:
+        for name, cf in list(CUSTOM_FUNDS.items()):
+            yrs = ", ".join(cf.get("alloc_ts", {}).keys()) or "–"
+            n_ret = len(cf.get("returns_ts", {}))
+            c_a, c_b = st.columns([5, 1])
+            with c_a:
+                st.markdown(f"**{name}** — 배분 연도: {yrs} | 수익률 {n_ret}개년 | "
+                            f"AUM: {cf.get('meta', {}).get('aum', '–')}")
+            with c_b:
+                if st.button("🗑 삭제", key=f"del_cf_{name}"):
+                    CUSTOM_FUNDS.pop(name, None)
+                    save_custom_funds(CUSTOM_FUNDS)
+                    st.rerun()
+        st.caption("저장 위치: 앱 폴더의 custom_funds.json — 로컬 실행 시 영구 보존됩니다. "
+                   "⚠️ Render 등 클라우드 배포 환경은 디스크가 임시 저장소라 재배포·재시작 시 "
+                   "초기화될 수 있어요. 영구 보관하려면 파일을 저장소에 커밋하거나 외부 스토리지 연동이 필요합니다.")
+    else:
+        st.caption("PDF 추출 후 '대시보드에 반영'을 누르면 여기에 저장되고, "
+                   "Radar 메인·기관별 상세·자산군별 비교 페이지에 새 기관으로 나타납니다.")
