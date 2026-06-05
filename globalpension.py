@@ -9,6 +9,7 @@ import numpy as np
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from openai import OpenAI
 
 # ══════════════════════════════════════════════════════════════
@@ -416,23 +417,62 @@ st.set_page_config(
 # CSS
 st.markdown("""
 <style>
-[data-testid="stSidebar"] { background-color: #0f1923; }
-[data-testid="stSidebar"] * { color: #e8edf2 !important; }
+[data-testid="stSidebar"] { background-color: #0b1220; }
+[data-testid="stSidebar"] * { color: #dce6f0 !important; }
+
+/* 메인 배경 */
+.stApp { background-color: #0d1117; }
+
+/* 탭 스타일 */
+[data-testid="stTabs"] button {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    padding: 6px 14px !important;
+    color: #8fa3b8 !important;
+}
+[data-testid="stTabs"] button[aria-selected="true"] {
+    color: #90caf9 !important;
+    border-bottom: 2px solid #3b82f6 !important;
+}
+
+/* 기관 개요 카드 */
 .metric-card {
-    background:#1a2535; border-radius:10px; padding:16px 18px;
-    border-left:4px solid #3b82f6; margin-bottom:8px;
-    color:#e2e8f0; line-height:1.7;
+    background: #141e2e;
+    border-radius: 10px;
+    padding: 14px 16px;
+    border-left: 4px solid #3b82f6;
+    margin-bottom: 8px;
+    color: #c9d6e3;
+    line-height: 1.8;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
-.metric-card b { color:#f8fafc; }
+.metric-card b { color: #f0f4f8; }
+
+/* 기관 헤더 배너 */
 .fund-header {
-    background:linear-gradient(90deg,#1a2535,#0f1923);
-    border-radius:8px; padding:14px 20px; margin-bottom:12px;
+    background: linear-gradient(90deg, #162032, #0b1220);
+    border-radius: 8px;
+    padding: 14px 20px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid #1e3a5f;
 }
-.badge-alt  { background:#1e3a5f; color:#90caf9; padding:2px 8px; border-radius:4px; font-size:12px; }
-.badge-fund { background:#1b3a2d; color:#81c995; padding:2px 8px; border-radius:4px; font-size:12px; }
-.badge-risk-red  { background:#4a1515; color:#f48fb1; padding:2px 8px; border-radius:4px; font-size:12px; }
-.badge-risk-yel  { background:#3a2e00; color:#fff176; padding:2px 8px; border-radius:4px; font-size:12px; }
-.badge-risk-grn  { background:#1b3a2d; color:#a5d6a7; padding:2px 8px; border-radius:4px; font-size:12px; }
+
+/* 섹션 제목 h5 */
+h5 { color: #a8bfd4 !important; margin-top: 8px !important; }
+
+/* 뱃지 */
+.badge-alt  { background:#1e3a5f; color:#90caf9; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+.badge-fund { background:#1b3a2d; color:#81c995; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+.badge-risk-red  { background:#4a1515; color:#f48fb1; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+.badge-risk-yel  { background:#3a2e00; color:#fff176; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+.badge-risk-grn  { background:#1b3a2d; color:#a5d6a7; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+
+/* st.progress 색상 */
+[data-testid="stProgress"] > div { background-color: #1e3a5f !important; }
+[data-testid="stProgress"] > div > div { background-color: #3b82f6 !important; }
+
+/* 구분선 */
+hr { border-color: #1e293b !important; margin: 18px 0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -626,11 +666,25 @@ elif page == "🏦 기관별 상세":
                     "Hedge Fund/Other":"#6366f1","Public Equity":"#64748b","Fixed Income":"#94a3b8",
                 }
                 fig_pie = px.pie(df_pie, values="비중", names="자산군",
-                                 title=f"{fund} 자산배분 (현재)",
+                                 title=f"{fund} 자산배분 (최신)",
                                  color="자산군", color_discrete_map=color_map,
-                                 hole=0.4)
-                fig_pie.update_layout(paper_bgcolor="#0d1117",plot_bgcolor="#0d1117",
-                                      font_color="#e2e8f0",legend_font_size=11)
+                                 hole=0.45)
+                fig_pie.update_traces(
+                    textinfo="none",
+                    hovertemplate="<b>%{label}</b><br>%{value:.1f}%<extra></extra>",
+                )
+                fig_pie.update_layout(
+                    paper_bgcolor="#0d1117", plot_bgcolor="#0d1117",
+                    font_color="#e2e8f0",
+                    legend=dict(
+                        orientation="v", yanchor="middle", y=0.5,
+                        xanchor="left", x=1.02, font_size=11,
+                        bgcolor="rgba(0,0,0,0)",
+                    ),
+                    title_font_size=14,
+                    margin=dict(l=0, r=120, t=40, b=0),
+                    height=280,
+                )
                 st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{fund}")
 
             with c2:
@@ -696,6 +750,47 @@ elif page == "🏦 기관별 상세":
                     xaxis=dict(gridcolor="#1e293b"),
                 )
                 st.plotly_chart(fig_total, use_container_width=True, key=f"total_{fund}")
+
+            # ── 5개년 전체 자산배분 파이차트 ─────────────────────────
+            st.markdown("##### 🥧 전체 자산배분 5개년 변화")
+            alloc_ts_fund2 = ALLOC_TS.get(fund, {})
+            if alloc_ts_fund2:
+                years = list(alloc_ts_fund2.keys())
+                pie_color_map = {
+                    "Private Equity":"#3b82f6","Private Credit":"#8b5cf6",
+                    "Infrastructure":"#10b981","Real Estate":"#f59e0b",
+                    "Hedge Fund/Other":"#6366f1","Public Equity":"#64748b","Fixed Income":"#94a3b8",
+                }
+                fig_pies = make_subplots(
+                    rows=1, cols=len(years),
+                    specs=[[{"type":"pie"}]*len(years)],
+                    subplot_titles=years,
+                )
+                for col_i, yr in enumerate(years):
+                    yr_alloc = alloc_ts_fund2[yr]
+                    labels = list(yr_alloc.keys())
+                    values = list(yr_alloc.values())
+                    colors = [pie_color_map.get(l, "#94a3b8") for l in labels]
+                    fig_pies.add_trace(
+                        go.Pie(labels=labels, values=values,
+                               marker_colors=colors,
+                               hole=0.4,
+                               textinfo="none",
+                               hovertemplate="<b>%{label}</b><br>%{value:.1f}%<extra></extra>",
+                               showlegend=(col_i == 0)),
+                        row=1, col=col_i+1,
+                    )
+                fig_pies.update_layout(
+                    paper_bgcolor="#0d1117", font_color="#e2e8f0",
+                    height=260, margin=dict(l=0, r=0, t=30, b=0),
+                    legend=dict(
+                        orientation="h", yanchor="bottom", y=-0.35,
+                        xanchor="center", x=0.5, font_size=10,
+                        bgcolor="rgba(0,0,0,0)",
+                    ),
+                )
+                fig_pies.update_annotations(font_size=11, font_color="#94a3b8")
+                st.plotly_chart(fig_pies, use_container_width=True, key=f"pies_{fund}")
 
             st.divider()
 
@@ -860,15 +955,29 @@ elif page == "📊 자산군별 비교":
                 fig_ts5.update_traces(line_width=2.5)
                 st.plotly_chart(fig_ts5, use_container_width=True, key=f"ts5_{asset}")
 
-                # 연도별 기관 비중 히트맵
+                # 연도별 기관 비중 히트맵 (plotly)
                 df_pivot = df_ts5.pivot(index="기관", columns="연도", values="비중(%)")
+                df_pivot = df_pivot.reindex(FUNDS)
                 st.markdown("**연도별 비중 요약표**")
-                st.dataframe(
-                    df_pivot.style
-                        .format("{:.1f}%")
-                        .background_gradient(cmap="Blues", axis=None),
-                    use_container_width=True,
+                fig_heat = go.Figure(go.Heatmap(
+                    z=df_pivot.values.tolist(),
+                    x=list(df_pivot.columns),
+                    y=list(df_pivot.index),
+                    colorscale="Blues",
+                    text=[[f"{v:.1f}%" if not np.isnan(v) else "–"
+                           for v in row] for row in df_pivot.values],
+                    texttemplate="%{text}",
+                    textfont_size=12,
+                    showscale=False,
+                    hoverongaps=False,
+                ))
+                fig_heat.update_layout(
+                    paper_bgcolor="#0d1117", plot_bgcolor="#111827",
+                    font_color="#e2e8f0", height=230,
+                    margin=dict(l=0, r=0, t=10, b=0),
+                    xaxis=dict(side="top"),
                 )
+                st.plotly_chart(fig_heat, use_container_width=True, key=f"heat_{asset}")
 
             st.divider()
 
@@ -954,7 +1063,8 @@ elif page == "📰 News · Issues · Deals":
         risk_cls = {"🔴 High":"badge-risk-red","🟡 Medium":"badge-risk-yel","🟢 Low":"badge-risk-grn"}.get(art["risk"],"badge-risk-grn")
         fund_badges  = " ".join(f"<span class='badge-fund'>{f}</span>"  for f in art["fund_tags"])
         asset_badges = " ".join(f"<span class='badge-alt'>{a}</span>"   for a in art["asset_tags"])
-        risk_badge   = f"<span class='{risk_cls}'>{art['risk']}</span>"
+        art_risk     = art["risk"]
+        risk_badge   = f"<span class='{risk_cls}'>{art_risk}</span>"
 
         with st.expander(f"{art['title'][:80]}…" if len(art["title"])>80 else art["title"]):
             st.markdown(f"{fund_badges} {asset_badges} {risk_badge}", unsafe_allow_html=True)
