@@ -548,27 +548,120 @@ def risk_level(title, desc):
 # 3. API
 # ══════════════════════════════════════════════════════════════
 
+# ── 뉴스 관련성 필터 ──────────────────────────────────────────
+PENSION_MUST_KW = [
+    "연기금","pension fund","pension investment","asset allocation","투자","대체투자",
+    "운용","포트폴리오","private equity","infrastructure","real estate","private credit",
+    "direct lending","사모","인프라","부동산","수익률","allocation","alternative",
+    "endowment","sovereign fund","institutional investor","약정","위탁운용",
+]
+PENSION_EXCLUDE_KW = [
+    "노령연금","기초연금","수급자","수령방법","신청방법","납부","연금보험료",
+    "개인연금","연금저축","세금","소득공제","퇴직금","실업급여","건강보험",
+]
+
+# ── 해외 공개 RSS 피드 ────────────────────────────────────────
+GLOBAL_RSS_FEEDS = [
+    ("Pensions & Investments", "https://www.pionline.com/rss/home"),
+    ("Reuters Business",        "https://feeds.reuters.com/reuters/businessNews"),
+    ("IPE (Inst. Investor EU)", "https://www.ipe.com/rss"),
+]
+
+@st.cache_data(ttl=3600)
+def fetch_global_rss(extra_kw=None):
+    import xml.etree.ElementTree as ET
+    search_kw = [
+        "pension","endowment","sovereign","alternative","private equity",
+        "infrastructure","real estate","private credit","asset allocation",
+        "institutional investor","fund manager","portfolio",
+    ]
+    if extra_kw:
+        search_kw += [k.lower() for k in extra_kw]
+    articles, seen = [], set()
+    for source, url in GLOBAL_RSS_FEEDS:
+        try:
+            resp = requests.get(url, timeout=10,
+                                headers={"User-Agent":"Mozilla/5.0"})
+            if resp.status_code != 200:
+                continue
+            root  = ET.fromstring(resp.content)
+            items = root.findall('.//item')
+            count = 0
+            for item in items:
+                title = (item.findtext('title') or "").strip()
+                desc  = (item.findtext('description') or "").strip()
+                link  = (item.findtext('link') or "").strip()
+                text  = (title + " " + desc).lower()
+                if not any(k in text for k in search_kw):
+                    continue
+                if link not in seen:
+                    seen.add(link)
+                    articles.append({
+                        "title":       title[:150],
+                        "description": clean_html(desc[:400]),
+                        "link":        link,
+                        "pubDate":     item.findtext('pubDate', ''),
+                        "source":      source,
+                        "is_global":   True,
+                    })
+                    count += 1
+                    if count >= 6:
+                        break
+        except Exception:
+            pass
+    return articles
+
 @st.cache_data(ttl=3600)
 def fetch_news(keywords):
-    if not NAVER_CLIENT_ID: return []
     articles, seen = [], set()
-    for kw in keywords:
-        try:
-            r = requests.get(
-                "https://openapi.naver.com/v1/search/news.json",
-                headers={"X-Naver-Client-Id":NAVER_CLIENT_ID,
-                         "X-Naver-Client-Secret":NAVER_CLIENT_SECRET},
-                params={"query":kw,"display":10,"sort":"date"},timeout=15)
-            for item in r.json().get("items",[]):
-                lnk = item.get("originallink","")
-                if lnk not in seen:
-                    seen.add(lnk)
-                    articles.append({
-                        "title":clean_html(item.get("title","")),
-                        "description":clean_html(item.get("description","")),
-                        "link":lnk, "pubDate":item.get("pubDate",""),
-                    })
-        except: pass
+
+    # ── 네이버 API (한국 뉴스) ─────────────────────────────
+    if NAVER_CLIENT_ID:
+        expanded = []
+        for kw in keywords:
+            expanded.append(kw)
+            if not any(x in kw for x in ["투자", "운용", "펀드"]):
+                expanded.append(kw + " 투자")
+        for kw in expanded[:8]:
+            try:
+                r = requests.get(
+                    "https://openapi.naver.com/v1/search/news.json",
+                    headers={"X-Naver-Client-Id":     NAVER_CLIENT_ID,
+                             "X-Naver-Client-Secret": NAVER_CLIENT_SECRET},
+                    params={"query": kw, "display": 15, "sort": "date"},
+                    timeout=15)
+                for item in r.json().get("items", []):
+                    lnk   = item.get("originallink", "")
+                    title = clean_html(item.get("title", ""))
+                    desc  = clean_html(item.get("description", ""))
+                    text  = (title + " " + desc).lower()
+                    if any(ex in text for ex in PENSION_EXCLUDE_KW):
+                        continue
+                    if not any(m in text for m in PENSION_MUST_KW):
+                        continue
+                    if lnk not in seen:
+                        seen.add(lnk)
+                        articles.append({
+                            "title":       title,
+                            "description": desc,
+                            "link":        lnk,
+                            "pubDate":     item.get("pubDate", ""),
+                            "source":      "Naver",
+                            "is_global":   False,
+                        })
+            except Exception:
+                pass
+
+    # ── 해외 RSS (English) ─────────────────────────────────
+    try:
+        global_arts = fetch_global_rss(extra_kw=keywords)
+        for a in global_arts:
+            if a["link"] not in seen:
+                seen.add(a["link"])
+                articles.append(a)
+    except Exception:
+        pass
+
     return articles
 
 def ai_call(prompt, model="gpt-4o-mini"):
@@ -629,19 +722,31 @@ PAGES:\n{text}"""
 
 def ai_main_interpretation(matrix_json):
     if not client: return None
-    prompt = f"""You are a CIO advisor for a Korean institutional investor.
-Analyze the following pension fund allocation matrix and return ONLY JSON:
+    prompt = f"""당신은 글로벌 연기금 대체투자 전략을 분석하는 한국 기관투자자의 CIO 어드바이저입니다.
+아래 5개 글로벌 연기금(국민연금·CPPIB·CalPERS·OTPP·PSP)의 최신 자산군별 배분 데이터를 분석하고,
+한국 보험사·연기금 투자 담당자에게 실질적으로 유용한 인사이트를 JSON으로만 반환하세요.
+
+분석 기준:
+- 각 자산군의 글로벌 트렌드 방향성(확대/축소/유지)과 그 배경
+- 기관 간 전략 차별점과 시사점
+- 한국 기관투자자 관점에서의 구체적 액션 아이템
+
+JSON 형식 (모든 값은 한국어, 2~3문장 분량):
 {{
-  "headline": "<2-sentence executive summary in Korean>",
-  "pe_signal": "<PE trend signal, Korean, 1 sentence>",
-  "credit_signal": "<Private Credit signal, Korean>",
-  "infra_signal": "<Infrastructure signal, Korean>",
-  "re_signal": "<Real Estate signal, Korean>",
-  "key_movers": ["<fund: what changed and why, Korean>"],
-  "opportunity": "<top opportunity for Korean insurer, Korean>",
-  "risk": "<main risk, Korean>"
+  "headline": "<글로벌 연기금 대체투자 흐름의 핵심 메시지 2문장. 수치 포함>",
+  "pe_signal": "<PE 트렌드: 누가 왜 축소/확대하는지, 한국 기관에 주는 시사점>",
+  "credit_signal": "<Private Credit 트렌드: 금리 환경 연계 분석, 구체적 기회>",
+  "infra_signal": "<인프라 트렌드: 에너지전환·디지털인프라 중심으로 기회와 리스크>",
+  "re_signal": "<부동산 트렌드: 오피스 리스크 vs 물류·주거 기회, 현시점 판단>",
+  "key_movers": [
+    "<기관명: 가장 큰 배분 변화와 전략적 의미>",
+    "<기관명: 두 번째 주목할 변화>"
+  ],
+  "opportunity": "<한국 기관투자자가 지금 당장 검토해야 할 가장 구체적인 투자 기회. 자산군·지역·전략 포함>",
+  "risk": "<현재 글로벌 연기금 포트폴리오에서 가장 우려되는 리스크. 선행 지표와 대응 방안 포함>"
 }}
-MATRIX: {json.dumps(matrix_json, ensure_ascii=False)}"""
+
+배분 데이터: {json.dumps(matrix_json, ensure_ascii=False)}"""
     return ai_call(prompt)
 
 def ai_fund_detail(fund, meta, alloc, returns, issue):
@@ -874,14 +979,13 @@ if page == "🏠 Radar 메인":
         sig_detail = sig_parts[1].strip()[:60] if len(sig_parts) > 1 else ""
 
         mx += f"<tr style='background:{row_bg};border-bottom:2px solid #e2e8f0;vertical-align:top'>"
-        mx += (f"<td style='padding:12px 14px;min-width:160px'>"
-               f"<b style='color:#0f172a;font-size:14px'>{fund}</b><br>"
+        mx += (f"<td style='padding:12px 14px;min-width:170px;max-width:190px'>"
+               f"<b style='color:#0f172a;font-size:13px'>{fund}</b><br>"
                f"<span style='font-size:10px;color:#94a3b8'>{m['country']} | {m['type']}</span><br>"
                f"<span style='font-size:10px;color:#64748b'>AUM: {m['aum']}</span><br>"
                f"<span style='display:inline-block;margin-top:5px;font-size:10px;font-weight:700;"
                f"color:{sig_color};background:{'#fef2f2' if '🔴' in sig else ('#fffbeb' if '🟡' in sig else '#f0fdf4')};"
-               f"padding:2px 7px;border-radius:10px'>{sig_badge}</span><br>"
-               f"<span style='font-size:10px;color:#64748b;line-height:1.5'>{sig_detail}</span>"
+               f"padding:2px 7px;border-radius:10px'>{sig_badge}</span>"
                f"</td>")
         # ALT_CLASSES
         alt_sum = 0
@@ -910,14 +1014,15 @@ if page == "🏠 Radar 메인":
                f"<b style='font-size:15px;color:#1d4ed8'>{alt_sum:.1f}%</b><br>"
                f"<span style='font-size:10px;color:{alt_col}'>{alt_arr}</span></td>")
         # 기관 특징
-        # 기관 특징 - 첫 2문장을 굵게, 나머지는 일반 폰트
-        char_sentences = [s.strip() for s in char.replace('. ', '.|||').split('|||') if s.strip()]
+        # 기관 특징 - 첫 문장 굵게(두괄식), 이후 2문장 일반
+        char_sentences = [s.strip() for s in char.replace('. ', '.|').split('|') if s.strip() and len(s.strip()) > 5]
         char_html = ""
-        for ci2, sent in enumerate(char_sentences[:4]):
+        for ci2, sent in enumerate(char_sentences[:3]):
             weight = "700" if ci2 == 0 else "400"
-            col2   = "#1e293b" if ci2 == 0 else "#475569"
-            char_html += f"<span style='font-weight:{weight};color:{col2}'>{sent}.</span> "
-        mx += f"<td style='padding:10px 14px;font-size:11.5px;line-height:1.75;max-width:280px;vertical-align:top'>{char_html}</td>"
+            col2   = "#0f172a" if ci2 == 0 else "#475569"
+            size   = "12.5px" if ci2 == 0 else "11.5px"
+            char_html += f"<p style='margin:0 0 5px;font-size:{size};font-weight:{weight};color:{col2};line-height:1.6'>{sent}.</p>"
+        mx += f"<td style='padding:10px 16px;vertical-align:top;width:300px;min-width:260px;max-width:340px'>{char_html}</td>"
         mx += "</tr>"
 
     mx += "</tbody></table>"
@@ -966,21 +1071,59 @@ if page == "🏠 Radar 메인":
     # ── 대체투자 자산군 이슈 ─────────────────────────────────
     st.divider()
     st.subheader("📌 대체투자 자산군 이슈")
-    alt_issue_cols = st.columns(len(ALT_CLASSES))
-    for ci, ac in enumerate(ALT_CLASSES):
-        with alt_issue_cols[ci]:
-            ac_arts = [a for a in tagged_all if ac in a.get("asset_tags",[])]
-            n_ac = len({a["title"] for a in ac_arts})
-            ov = ASSET_OVERVIEW.get(ac,{})
+    ac_colors = {
+        "Private Equity":   "#3b82f6",
+        "Private Credit":   "#8b5cf6",
+        "Infrastructure":   "#10b981",
+        "Real Estate":      "#f59e0b",
+        "Hedge Fund/Other": "#6366f1",
+    }
+    for ac in ALT_CLASSES:
+        ov      = ASSET_OVERVIEW.get(ac, {})
+        ac_arts = [a for a in tagged_all if ac in a.get("asset_tags", [])]
+        n_ac    = len({a["title"] for a in ac_arts})
+        top_c   = ac_colors.get(ac, "#3b82f6")
+        # 관련 기관 (현재 비중 상위 3개)
+        ac_funds = sorted(FUNDS, key=lambda f: ALLOC[f].get(ac,(0,0))[0] or 0, reverse=True)[:3]
+        fund_tags = " ".join(
+            f"<span style='background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:600;"
+            f"padding:1px 6px;border-radius:8px;margin-right:3px'>{f}</span>"
+            for f in ac_funds
+        )
+        with st.expander(f"**{ac}** — 관련 뉴스 {n_ac}건", expanded=True):
             st.markdown(
-                f"<div style='background:#f8fafc;border:1px solid #e2e8f0;border-top:3px solid #3b82f6;"
-                f"border-radius:8px;padding:12px;height:100%'>"
-                f"<p style='font-weight:700;color:#1d4ed8;font-size:13px;margin:0 0 6px'>{ac}</p>"
-                f"<p style='font-size:11px;color:#64748b;margin:0 0 4px'>관련 뉴스: <b style='color:#1e293b'>{n_ac}건</b></p>"
-                f"<p style='font-size:11px;color:#475569;line-height:1.6;margin:0'>{ov.get('recent','–')[:100]}…</p>"
+                f"<div style='border-left:4px solid {top_c};padding:0 0 0 14px'>"
+                f"<p style='font-size:13px;color:#334155;line-height:1.75;margin:0 0 10px'>"
+                f"<b style='color:#0f172a'>개요:</b> {ov.get('overview','')}</p>"
+                f"<div style='display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px'>"
+                f"<div style='flex:1;min-width:200px'>"
+                f"<p style='font-size:11px;font-weight:700;color:#15803d;margin:0 0 3px'>✅ 투자 매력</p>"
+                f"<p style='font-size:12px;color:#1e293b;line-height:1.65;margin:0'>{ov.get('attraction','')}</p>"
+                f"</div>"
+                f"<div style='flex:1;min-width:200px'>"
+                f"<p style='font-size:11px;font-weight:700;color:#b91c1c;margin:0 0 3px'>⚠️ 주요 리스크</p>"
+                f"<p style='font-size:12px;color:#1e293b;line-height:1.65;margin:0'>{ov.get('risk','')}</p>"
+                f"</div>"
+                f"</div>"
+                f"<div style='background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 6px 6px 0;"
+                f"padding:8px 12px;margin-bottom:10px'>"
+                f"<p style='font-size:11px;font-weight:700;color:#b45309;margin:0 0 3px'>🔔 최근 이슈</p>"
+                f"<p style='font-size:12px;color:#1e293b;line-height:1.65;margin:0'>{ov.get('recent','')}</p>"
+                f"</div>"
+                f"<p style='font-size:11px;color:#64748b;margin:0'>주요 투자 기관: {fund_tags}</p>"
                 f"</div>",
                 unsafe_allow_html=True
             )
+            # 관련 뉴스 (있는 경우)
+            if ac_arts:
+                st.markdown("**관련 뉴스**")
+                for art in ac_arts[:3]:
+                    src_badge = f"[{art.get('source','Naver')}]" if art.get('is_global') else ""
+                    st.markdown(
+                        f"• {src_badge} [{art['title'][:80]}]({art.get('link','#')})  "
+                        f"<span style='font-size:11px;color:#94a3b8'>{art.get('pubDate','')[:16]}</span>",
+                        unsafe_allow_html=True
+                    )
 
 
 # ══════════════════════════════════════════════════════════════
@@ -1684,8 +1827,9 @@ elif page == "📊 자산군별 비교":
                     f"기관별 현재/전기 비중: {data_json}\n"
                     f"전략 특징: {asset_summary}\n"
                     "JSON 반환:\n"
-                    '{"leader":"<선도 기관>","laggard":"<뒤처지는 기관>","trend":"<전반적 트렌드 Korean>",'
-                    '"opportunity":"<한국 기관투자자 관점 기회 Korean>","caution":"<주의사항 Korean>"}'
+                    "JSON 반환:\n"
+                    '{"leader":"<선도 기관>","laggard":"<뒤처지는 기관>","trend":"<전반적 트렌드>",'
+                    '"opportunity":"<한국 기관투자자 관점 기회>","caution":"<주의사항>"}'
                 )
                 with st.spinner("AI 분석 중..."):
                     r = ai_call(prompt)
@@ -1698,18 +1842,19 @@ elif page == "📊 자산군별 비교":
                 st.success(f"🎯 **기회:** {ai_ar.get('opportunity','')}")
                 st.warning(f"⚠️ **주의:** {ai_ar.get('caution','')}")
 
+# ══════════════════════════════════════════════════════════════
+# PAGE 4: News · Issues · Deals
+# ══════════════════════════════════════════════════════════════
 
 elif page == "📰 News · Issues · Deals":
     st.title("📰 News · Issues · Deals")
     st.caption("기관·자산군 자동 태깅 | 리스크 레벨 | AI 3줄 요약")
 
-    # 필터
     c1, c2, c3 = st.columns(3)
     with c1: fund_filter  = st.multiselect("기관 필터", ["전체"]+FUNDS, default=["전체"])
     with c2: asset_filter = st.multiselect("자산군 필터", ["전체"]+ALT_CLASSES, default=["전체"])
     with c3: risk_filter  = st.multiselect("리스크 필터", ["전체","🔴 High","🟡 Medium","🟢 Low"], default=["전체"])
 
-    # 뉴스 수집
     all_kws = []
     for kws in NEWS_KEYWORDS.values(): all_kws.extend(kws[:1])
     for kws in ASSET_KEYWORDS.values(): all_kws.extend(kws[:1])
@@ -1723,7 +1868,6 @@ elif page == "📰 News · Issues · Deals":
     if not articles:
         st.info("Naver API 키가 없으면 뉴스가 표시되지 않습니다.")
 
-    # 태깅 & 필터링
     tagged = []
     for a in articles:
         ftags, atags = tag_article(a["title"], a["description"])
@@ -1745,8 +1889,8 @@ elif page == "📰 News · Issues · Deals":
         asset_badges = " ".join(f"<span class='badge-alt'>{a}</span>"   for a in art["asset_tags"])
         art_risk     = art["risk"]
         risk_badge   = f"<span class='{risk_cls}'>{art_risk}</span>"
-
-        with st.expander(f"{art['title'][:80]}…" if len(art["title"])>80 else art["title"]):
+        src_label    = f"[{art.get('source','')}] " if art.get("is_global") else ""
+        with st.expander(f"{src_label}{art['title'][:80]}…" if len(art["title"])>80 else f"{src_label}{art['title']}"):
             st.markdown(f"{fund_badges} {asset_badges} {risk_badge}", unsafe_allow_html=True)
             st.write(art["description"])
             c_sum, c_link = st.columns([3,1])
@@ -1765,6 +1909,7 @@ elif page == "📰 News · Issues · Deals":
 elif page == "📁 Data Room":
     st.title("📁 Data Room")
     st.caption("PDF 업로드 → AI 수치 추출 → 사람 검수 → 대시보드 반영")
+    st.info("OpenAI API 키가 설정되어야 AI 수치 추출이 작동합니다. Render 환경변수에 OPENAI_API_KEY를 추가하세요.")
 
     uploaded = st.file_uploader("정기보고서 PDF 업로드 (다수 가능)",
                                 type=["pdf"], accept_multiple_files=True)
@@ -1783,42 +1928,18 @@ elif page == "📁 Data Room":
             st.success(f"{len(extracted)}개 파일 추출 완료")
 
     extracted = st.session_state.get("dr_extracted",[])
-
     for item in extracted:
         with st.expander(f"📄 {item['file']}  →  {item.get('fund_name','')} ({item.get('report_year','')})"):
             st.markdown(f"**요약:** {item.get('summary','')}")
-
             alloc_dr = item.get("allocation",{})
-
             if alloc_dr:
-                st.markdown("**추출된 자산배분 (검수 후 저장)**")
-                df_edit = pd.DataFrame({
-                    "자산군": list(alloc_dr),
-                    "AI 추출 (%)": [round(v,1) for v in alloc_dr.values()],
-                    "검수 수정 (%)": [round(v,1) for v in alloc_dr.values()],
-                })
-                edited = st.data_editor(df_edit, key=f"edit_{item['file']}",
-                                        use_container_width=True, hide_index=True)
-
+                df_edit = pd.DataFrame({"자산군":list(alloc_dr),"AI 추출 (%)": [round(v,1) for v in alloc_dr.values()],"검수 수정 (%)": [round(v,1) for v in alloc_dr.values()]})
+                edited = st.data_editor(df_edit, key=f"edit_{item['file']}", use_container_width=True, hide_index=True)
                 if st.button("✅ 대시보드에 반영", key=f"save_{item['file']}"):
-                    fund_name = item.get("fund_name","")
-                    year      = item.get("report_year","")
                     saved = st.session_state.get("dr_saved",{})
-                    saved[(fund_name, year)] = dict(zip(edited["자산군"], edited["검수 수정 (%)"]))
+                    saved[(item.get("fund_name",""), item.get("report_year",""))] = dict(zip(edited["자산군"], edited["검수 수정 (%)"]))
                     st.session_state["dr_saved"] = saved
-                    st.success(f"'{fund_name} ({year})' 저장 완료!")
-
-                fig_dr = px.bar(
-                    pd.DataFrame({"자산군":list(alloc_dr),"비중(%)":list(alloc_dr.values())}).sort_values("비중(%)",ascending=True),
-                    x="비중(%)", y="자산군", orientation="h",
-                    title=f"{item.get('fund_name','')} ({item.get('report_year','')}) 추출 배분",
-                    text="비중(%)"
-                )
-                fig_dr.update_traces(texttemplate="%{text:.1f}%", textposition="outside",
-                                     textfont=dict(color="#1e293b"))
-                fig_dr.update_layout(paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
-                                     font=dict(color=TICK_COLOR, size=12))
-                st.plotly_chart(fig_dr, use_container_width=True)
+                    st.success("저장 완료!")
             else:
                 st.warning("배분 데이터를 추출하지 못했습니다.")
 
