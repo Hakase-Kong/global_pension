@@ -925,57 +925,112 @@ def chart_layout(**kwargs):
 # ══════════════════════════════════════════════════════════════
 
 # ── 세션 초기화 ──────────────────────────────────────────────
-if "page_sel"  not in st.session_state: st.session_state["page_sel"]  = "🏠 Radar 메인"
-if "nav_fund"  not in st.session_state: st.session_state["nav_fund"]  = None
+if "nav_fund"   not in st.session_state: st.session_state["nav_fund"]   = None
+if "_page_idx"  not in st.session_state: st.session_state["_page_idx"]  = 0
+
+PAGE_OPTIONS = [
+    "🏠 Radar 메인",
+    "🏦 기관별 상세",
+    "📊 자산군별 비교",
+    "📰 News · Issues · Deals",
+    "📁 Data Room",
+]
+
+# 순위표 기금 데이터 (★ = 분석 대상)
+RANKING_DATA = [
+    (1,  "🇳🇴", "Norway GPFG",  1700, "국부펀드",  None),
+    (2,  "🇯🇵", "Japan GPIF",   1500, "공적연금",  None),
+    (3,  "🇰🇷", "국민연금(NPS)",  880, "공적연금",  "국민연금(NPS)"),
+    (4,  "🇸🇬", "GIC",           770, "국부펀드",  None),
+    (5,  "🇳🇱", "ABP",           630, "직역연금",  None),
+    (6,  "🇺🇸", "CalPERS",       635, "공적연금",  "CalPERS"),
+    (7,  "🇨🇦", "CPPIB",         587, "공적연금",  "CPPIB"),
+    (8,  "🇳🇱", "PFZW",          320, "직역연금",  None),
+    (9,  "🇨🇦", "PSP",           222, "공적연금",  "PSP Investments"),
+    (10, "🇨🇦", "OTPP",          207, "직역연금",  "OTPP"),
+]
 
 with st.sidebar:
     st.markdown("## 📡 Pension Alt Radar")
     st.markdown("---")
-    page = st.radio("", [
-        "🏠 Radar 메인",
-        "🏦 기관별 상세",
-        "📊 자산군별 비교",
-        "📰 News · Issues · Deals",
-        "📁 Data Room",
-    ], key="page_sel", label_visibility="collapsed")
+    # index= 방식으로 session_state 충돌 없이 페이지 전환
+    page = st.radio("", PAGE_OPTIONS,
+                    index=st.session_state["_page_idx"],
+                    label_visibility="collapsed")
+    # radio가 클릭되면 _page_idx 동기화
+    st.session_state["_page_idx"] = PAGE_OPTIONS.index(page)
+
     st.markdown("---")
-    st.caption("🌐 글로벌 연기금 규모 순위")
-    ranking_html = """
-<table style='width:100%;border-collapse:collapse;font-size:11px;color:#cbd5e1'>
-<tr style='background:#1a2535;color:#90caf9'>
-  <th style='padding:4px 6px;text-align:center'>#</th>
-  <th style='padding:4px 6px;text-align:left'>기금명</th>
-  <th style='padding:4px 6px;text-align:right'>AUM(B$)</th>
-  <th style='padding:4px 6px;text-align:center'>분류</th>
-</tr>
-<tr style='background:#0d1117'><td style='padding:3px 6px;text-align:center'>1</td><td>🇳🇴 Norway GPFG</td><td style='text-align:right'>1,700</td><td style='text-align:center;color:#aab8c8'>국부펀드</td></tr>
-<tr style='background:#111827'><td style='padding:3px 6px;text-align:center'>2</td><td>🇯🇵 Japan GPIF</td><td style='text-align:right'>1,500</td><td style='text-align:center;color:#aab8c8'>공적연금</td></tr>
-<tr style='background:#0d1117;border-left:3px solid #3b82f6'><td style='padding:3px 6px;text-align:center'>3</td><td><b style='color:#f8fafc'>🇰🇷 국민연금 ★</b></td><td style='text-align:right'><b>880</b></td><td style='text-align:center;color:#90caf9'>공적연금</td></tr>
-<tr style='background:#111827'><td style='padding:3px 6px;text-align:center'>4</td><td>🇸🇬 GIC</td><td style='text-align:right'>770</td><td style='text-align:center;color:#aab8c8'>국부펀드</td></tr>
-<tr style='background:#0d1117'><td style='padding:3px 6px;text-align:center'>5</td><td>🇳🇱 ABP</td><td style='text-align:right'>630</td><td style='text-align:center;color:#aab8c8'>직역연금</td></tr>
-<tr style='background:#111827;border-left:3px solid #3b82f6'><td style='padding:3px 6px;text-align:center'>6</td><td><b style='color:#f8fafc'>🇺🇸 CalPERS ★</b></td><td style='text-align:right'><b>635</b></td><td style='text-align:center;color:#90caf9'>공적연금</td></tr>
-<tr style='background:#0d1117;border-left:3px solid #3b82f6'><td style='padding:3px 6px;text-align:center'>7</td><td><b style='color:#f8fafc'>🇨🇦 CPPIB ★</b></td><td style='text-align:right'><b>587</b></td><td style='text-align:center;color:#90caf9'>공적연금</td></tr>
-<tr style='background:#111827'><td style='padding:3px 6px;text-align:center'>8</td><td>🇳🇱 PFZW</td><td style='text-align:right'>320</td><td style='text-align:center;color:#aab8c8'>직역연금</td></tr>
-<tr style='background:#0d1117;border-left:3px solid #3b82f6'><td style='padding:3px 6px;text-align:center'>9</td><td><b style='color:#f8fafc'>🇨🇦 PSP ★</b></td><td style='text-align:right'><b>222</b></td><td style='text-align:center;color:#90caf9'>공적연금</td></tr>
-<tr style='background:#111827;border-left:3px solid #3b82f6'><td style='padding:3px 6px;text-align:center'>10</td><td><b style='color:#f8fafc'>🇨🇦 OTPP ★</b></td><td style='text-align:right'><b>207</b></td><td style='text-align:center;color:#90caf9'>직역연금</td></tr>
-</table>
-<p style='font-size:10px;color:#4a5568;margin-top:4px'>★ 본 분석 대상 | 2024～2025 연차보고서 기준</p>
-"""
-    st.markdown(ranking_html, unsafe_allow_html=True)
-    st.markdown("---")
-    st.caption("📌 분석 기관 바로가기")
-    FUND_NAV = {
-        "🇰🇷 국민연금(NPS)": "국민연금(NPS)",
-        "🇺🇸 CalPERS":       "CalPERS",
-        "🇨🇦 CPPIB":         "CPPIB",
-        "🇨🇦 PSP":           "PSP Investments",
-        "🇨🇦 OTPP":          "OTPP",
-    }
-    for label, fund_key in FUND_NAV.items():
-        if st.button(label, key=f"nav_btn_{fund_key}", use_container_width=True):
-            st.session_state["page_sel"] = "🏦 기관별 상세"
-            st.session_state["nav_fund"] = fund_key
-            st.rerun()
+    st.caption("🌐 글로벌 연기금 규모 순위 (★ 클릭 → 기관 상세)")
+
+    # ── 순위표: 비분석 기관은 HTML, ★ 분석 기관은 버튼 ────────────
+    # 버튼을 테이블처럼 보이게 하는 CSS
+    st.markdown("""<style>
+[data-testid="stSidebar"] .rank-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:3px 6px; font-size:11px; color:#cbd5e1;
+    border-bottom:1px solid #1e2535;
+}
+[data-testid="stSidebar"] .rank-star button {
+    background:#1a2a40 !important;
+    border:none !important;
+    border-left:3px solid #3b82f6 !important;
+    border-radius:0 !important;
+    color:#93c5fd !important;
+    font-size:11px !important;
+    font-weight:700 !important;
+    padding:3px 6px !important;
+    text-align:left !important;
+    width:100% !important;
+    margin:0 !important;
+    cursor:pointer !important;
+}
+[data-testid="stSidebar"] .rank-star button:hover {
+    background:#1e3a5f !important;
+    color:#bfdbfe !important;
+}
+</style>""", unsafe_allow_html=True)
+
+    # 헤더
+    st.markdown(
+        "<div class='rank-row' style='background:#1a2535;color:#90caf9;font-weight:700'>"
+        "<span style='width:20px'>#</span>"
+        "<span style='flex:1'>기금명</span>"
+        "<span style='width:52px;text-align:right'>AUM(B$)</span>"
+        "<span style='width:42px;text-align:center'>분류</span>"
+        "</div>",
+        unsafe_allow_html=True
+    )
+
+    for rank, flag, name, aum, cat, fund_key in RANKING_DATA:
+        bg = "#0d1117" if rank % 2 == 1 else "#111827"
+        if fund_key:  # ★ 분석 대상 → 버튼
+            with st.container():
+                st.markdown(f"<div class='rank-star'>", unsafe_allow_html=True)
+                if st.button(
+                    f"{rank}  {flag} {name} ★  {aum}B$",
+                    key=f"rank_nav_{fund_key}",
+                    use_container_width=True,
+                ):
+                    st.session_state["_page_idx"] = 1   # 기관별 상세
+                    st.session_state["nav_fund"]  = fund_key
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
+        else:  # 비분석 기관 → 텍스트
+            st.markdown(
+                f"<div class='rank-row' style='background:{bg}'>"
+                f"<span style='width:20px;color:#64748b'>{rank}</span>"
+                f"<span style='flex:1'>{flag} {name}</span>"
+                f"<span style='width:52px;text-align:right;color:#94a3b8'>{aum}</span>"
+                f"<span style='width:42px;text-align:center;color:#64748b;font-size:10px'>{cat}</span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
+    st.markdown(
+        "<p style='font-size:10px;color:#4a5568;margin:4px 6px'>★ 클릭 시 기관별 상세로 이동 | 2024～2025 연차보고서 기준</p>",
+        unsafe_allow_html=True
+    )
 
 # ══════════════════════════════════════════════════════════════
 # PAGE 1: RADAR 메인
