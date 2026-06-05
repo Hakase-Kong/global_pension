@@ -204,19 +204,79 @@ ALLOC_TS = {
 
 # 자산군별 전략 요약
 ASSET_SUMMARY = {
-    "Private Equity":  "바이아웃 중심 → 성장형 확대. AI·테크 섹터 집중. 빈티지 분산 전략.",
-    "Private Credit":  "직접대출(Direct Lending) 선호도 급증. 금리 고점 수혜. NAV 파이낸싱 주의.",
-    "Infrastructure":  "에너지 전환(재생에너지) 중심 확대. 데이터센터·디지털 인프라 신규 타깃.",
-    "Real Estate":     "오피스 손실 반영 마무리 단계. 물류·주거형 선호. 아시아 비중 소폭 확대.",
-    "Hedge Fund/Other":"절대수익 전략 유지. CTA·매크로 약세. Reinsurance ILS 관심 증가.",
+    "Private Equity": (
+        "글로벌 주요 기관들은 바이아웃 중심에서 성장형(Growth)·Venture Growth로 전략을 다변화하고 있으며, "
+        "AI·테크·헬스케어 섹터 집중도가 높아지고 있음. "
+        "2022~2023년 밸류에이션 조정과 엑시트 시장 위축으로 대부분 기관이 비중을 축소했으나, "
+        "2024~2025년 점진적 회복 국면에서 선별적 확대가 재개됨. "
+        "빈티지 분산 전략과 GP 재선별(Manager Selection)이 성과의 핵심 결정 요인."
+    ),
+    "Private Credit": (
+        "2022년 이후 금리 급등과 은행권 대출 규제 강화가 맞물리며 직접대출(Direct Lending) 시장이 급성장. "
+        "변동금리 구조로 금리 고점 환경에서 스프레드 수혜를 직접 누렸으며, "
+        "주요 기관의 비중이 7~14% 수준으로 확대됨. "
+        "단, NAV 파이낸싱·합성 리스크 이전 등 구조적 복잡성이 증가하고 있어 "
+        "신용 분석 역량과 LTV 관리가 중요해지고 있음. 금리 인하 국면에서의 스프레드 압축 여부 주목."
+    ),
+    "Infrastructure": (
+        "에너지 전환(재생에너지·송배전)과 디지털 인프라(데이터센터·광케이블)가 신규 투자의 핵심 타깃. "
+        "CPPIB 지속가능에너지 +23.2%, NPS 인프라 +23.0% 등 고수익 자산군으로 부상. "
+        "글로벌 인프라 자산 가격 상승으로 일부 기관이 차익 실현에 나섰으며(OTPP 17%→13%, PSP 13%→10.7%), "
+        "신규 진입 시 밸류에이션 부담이 증가하는 추세. "
+        "정책 변화(미국 IRA, EU 그린딜)가 투자 기회와 리스크를 동시에 제공 중."
+    ),
+    "Real Estate": (
+        "글로벌 오피스 시장의 구조적 침체(재택근무 정착)로 CalPERS·PSP·CPPIB 등 대부분 기관이 "
+        "비중을 대폭 축소함. 평가손 인식은 2024~2025년을 기점으로 마무리 단계에 접어들었으나, "
+        "공실률 회복까지 추가 시간 필요. 물류(E-commerce 수요), 주거용(임대주택 부족), "
+        "데이터센터(AI 수요) 부동산으로의 포트폴리오 재편이 가속화 중. "
+        "아시아 물류·주거형 부동산에 대한 기관 관심도가 점진적으로 증가."
+    ),
+    "Hedge Fund/Other": (
+        "CalPERS(10.5%→3.4%)·OTPP 등 주요 기관이 고비용·저투명성을 이유로 헤지펀드 비중을 대폭 축소. "
+        "CTA·매크로 전략은 2022년 급등 이후 2023~2024년 성과 부진으로 매력이 감소함. "
+        "반면 재보험(ILS) 전략은 자연재해 빈도 증가로 스프레드가 역대 최고 수준을 유지하며 재조명. "
+        "PSP의 천연자원·원자재 투자는 에너지 전환 수혜 자산으로 재평가 받고 있음. "
+        "절대수익 전략 유지 기관들은 CTA 대신 Reinsurance ILS 비중 확대 검토 중."
+    ),
 }
 
 RECENT_ISSUES = {
-    "국민연금(NPS)": "2024 수익률 15.0%로 2년 연속 사상 최고. 대체투자 비중 17.1%(206.9조원) 도달. 해외주식 +34.6% 고수익, 국내주식 -7.0% 부진. 인프라 +23.0%·사모 +21.2% 호조.",
-    "CPPIB":         "FY2026 7.8% 순수익. 지속가능에너지(Sust. Energy) +23.2%. Active Equities -$3.5B 손실.",
-    "CalPERS":       "FY2025 11.6% 수익률, 벤치마크 +1.7%p 초과. 펀딩비율 79% 개선. PE 목표비중 상향 논의.",
-    "OTPP":          "2025 6.7% 수익(벤치마크 -5.0%p). Private Equity -5.3% 언더퍼폼. Venture Growth +30.2%.",
-    "PSP Investments":"FY2025 12.6% 수익률. 5년 10.6%. 부동산 오피스 손실 마무리. 자본시장 비중 48.7% 확대.",
+    "국민연금(NPS)": (
+        "2024년 수익률 15.0%로 2년 연속 사상 최고치 달성. 해외주식(+34.6%)이 성과를 주도했으며, "
+        "인프라(+23.0%)·사모주식(+21.2%)의 대체투자도 두 자릿수 수익을 기록. "
+        "대체투자 비중이 17.1%(206.9조 원)에 도달해 장기 목표치를 처음 충족. "
+        "반면 국내주식은 -7.0%로 부진했으며, 해외부동산 오피스 자산의 리스크 모니터링이 지속 중. "
+        "향후 PE·인프라 위탁운용사 추가 선정과 채권 비중 추가 축소가 주요 과제."
+    ),
+    "CPPIB": (
+        "FY2026(2025년 3월말) 순수익률 7.8%. 지속가능에너지(Sust. Energy Infra) +23.2%로 신규 카테고리 성과 우수. "
+        "반면 Active Equities 전략에서 -$3.5B 손실이 발생해 전략 재검토 중. "
+        "PE 비중을 29%→22%로 대폭 축소하고 공모주식(36%)을 확대하는 구조 전환을 단행. "
+        "부동산·인프라·에너지를 'Real Assets'로 통합하는 분류 체계 개편도 완료. "
+        "FY2026 누적 운용자산 C$793B으로 역대 최대 달성."
+    ),
+    "CalPERS": (
+        "FY2025(2025년 6월말) 수익률 11.6%로 벤치마크 대비 +1.7%p 초과 달성. "
+        "PE가 15.7%로 5년 누적 최고치를 기록하며 목표 비중(17%) 달성에 근접. "
+        "Private Debt 신설 카테고리가 성장하며 3.4%에 도달. "
+        "부동산은 오피스 손실 반영 이후 7.4%로 안정화 단계에 진입. "
+        "펀딩비율 79%로 개선 추세이며 이사회에서 PE 목표 비중 추가 상향 논의 진행 중."
+    ),
+    "OTPP": (
+        "2025년 수익률 6.7%로 벤치마크 대비 -5.0%p 하회. PE 포트폴리오의 -5.3% 손실이 주요 원인. "
+        "반면 신설 카테고리인 Venture Growth가 +30.2%의 탁월한 성과를 기록하며 장기 성장 동력을 확인. "
+        "인프라를 17%→13%로 축소하며 차익을 실현했고, 공모주식은 14%→18%로 확대. "
+        "채권은 금리 정상화에 맞춰 39%→23%로 대폭 축소하는 대규모 리밸런싱을 단행. "
+        "PE 전략 재검토 및 Venture Growth 확대 여부가 2026년 핵심 관전 포인트."
+    ),
+    "PSP Investments": (
+        "FY2025(2025년 3월말) 수익률 12.6%로 분석 대상 기관 중 최고 성과 달성. 5년 누적 10.6%. "
+        "오피스 중심의 부동산 손실 인식이 FY2024~FY2025를 거쳐 마무리 단계에 접어들었으며, "
+        "부동산 비중은 10.3%→8.9%로 추가 감소했으나 감소 폭은 완화. "
+        "공모주식(자본시장) 비중을 21%→26.6%로 확대해 역대 최고치를 기록하며 안정적 성장 기반 구축. "
+        "Private Credit(10.1%)·인프라 직접투자를 핵심 역량으로 유지하며 균형 잡힌 포트폴리오 달성."
+    ),
 }
 
 # 기관별 리밸런싱 배경 해설 (5개년)
@@ -379,20 +439,50 @@ ASSET_OVERVIEW = {
 
 # ── 기관별 특징 요약 ──────────────────────────────────────────
 FUND_CHARACTERISTIC = {
-    "국민연금(NPS)":   "국내 최대 공적연금. 해외 대체투자 확대 기조. PE·인프라 위탁운용사 역량 구축 중. 기금 소진 우려로 수익률 제고 압박.",
-    "CPPIB":           "글로벌 최상위 직접투자 역량 보유. 공동투자(Co-investment) 선도. PE→공모주식 구조 전환 중. Active Equities 손실 관리 필요.",
-    "CalPERS":         "미국 최대 주 공무원연금. PE 목표 비중 상향 이행 중. 부동산 오피스 리스크 관리 완료 단계. 펀딩비율 79% 개선 추세.",
-    "OTPP":            "캐나다 교원연금. 직접투자 비율 높음. Venture Growth 신설로 성장형 강화. 인프라 차익 실현 후 공모주식 확대.",
-    "PSP Investments": "캐나다 연방공무원연금. Private Credit·인프라 직접투자 강점. 오피스 부동산 손실 인식 완료. 자본시장 비중 역대 최고(48.7%).",
+    "국민연금(NPS)": (
+        "세계 3위 규모 공적연금(AUM 약 $880B). 2040년대 기금 소진 우려에 대응해 "
+        "대체투자 17% 목표를 달성했으며, 해외 PE·인프라·사모대출 위탁운용사 추가 선정을 지속 추진 중. "
+        "2024년 해외주식(+34.6%)과 인프라(+23.0%)·PE(+21.2%)의 고수익으로 수익률 15.0% 달성. "
+        "채권 비중을 단계적으로 축소하며 성장지향형 포트폴리오로 전환하고 있으나, "
+        "국내주식(-7.0%) 부진과 해외부동산 오피스 리스크는 지속 모니터링 필요."
+    ),
+    "CPPIB": (
+        "캐나다 최대 연기금(AUM C$793B)으로 글로벌 최상위 직접투자·공동투자(Co-investment) 역량 보유. "
+        "FY2022 PE 32%에서 FY2026 22%로 구조적 축소를 단행하며 공모주식(36%)으로 전환, "
+        "유동성 확보와 포트폴리오 단순화에 집중. 지속가능에너지 인프라(+23.2%) 신설 카테고리가 성장 동력. "
+        "Active Equities 전략에서 FY2026 -$3.5B 손실이 발생해 전략 재검토 중이며, "
+        "PE 하단 수렴 여부와 Real Assets 통합 개편 이후 성과가 핵심 관전 포인트."
+    ),
+    "CalPERS": (
+        "미국 최대 주 공무원연금(AUM $635B)으로 캘리포니아 주정부 직원 약 200만 명 대상. "
+        "이사회 승인으로 PE 목표 비중을 17%로 상향하고 5년간 7.9%→15.7%로 두 배 확대 이행 중. "
+        "헤지펀드/기타를 10.5%→3.4%로 대폭 축소하며 포트폴리오를 단순화했고, "
+        "부동산 오피스 손실(11.9%→7.4%)은 마무리 단계. 펀딩비율 79%로 개선 추세이며, "
+        "Private Debt 신설 카테고리 성장과 PE 목표 비중 추가 상향 논의가 진행 중."
+    ),
+    "OTPP": (
+        "캐나다 온타리오주 교원연금(AUM C$279B)으로 13년 연속 완전적립 달성. "
+        "직접투자 비율이 높으며 Venture Growth 카테고리를 신설해 성장형 자산을 별도 관리. "
+        "2022년 금리 급등기에 채권을 19%→35%로 대폭 확대해 시장 대비 선방했으나, "
+        "2025년 PE 포트폴리오(-5.3%)가 발목을 잡아 벤치마크 대비 -5.0%p 언더퍼폼. "
+        "인프라 차익 실현(17%→13%) 후 공모주식(18%)을 확대하며 포트폴리오를 성장 방향으로 재편 중."
+    ),
+    "PSP Investments": (
+        "캐나다 연방 공무원·군인·RCMP 연금(AUM C$300B)으로 Private Credit·인프라 직접투자에 강점. "
+        "글로벌 오피스 시장 침체로 부동산 비중이 13.1%→8.9%로 급감했으나 손실 인식은 마무리 단계. "
+        "공모주식(자본시장)을 21%→26.6%로 역대 최고 수준으로 확대하며 안정성을 강화했고, "
+        "FY2025 수익률 12.6%로 분석 대상 기관 중 최고 성과 달성. "
+        "Private Credit(10.1%)과 인프라 직접투자를 핵심 역량으로 유지하며 장기 성장 기반 구축 중."
+    ),
 }
 
 # ── 기관별 최근 시그널 ────────────────────────────────────────
 INST_SIGNAL = {
-    "국민연금(NPS)":   "🟡 Watch — 해외부동산 회수 점검, PE·인프라 위탁운용사 추가 선정",
-    "CPPIB":           "🟡 Watch — Active Equities 손실 재발 방지, PE 하단 수렴 여부 모니터링",
-    "CalPERS":         "🟢 Stable — PE 확대 이행 중, 펀딩비율 개선. Private Debt 신설 주목",
-    "OTPP":            "🔴 Alert — PE 포트폴리오 -5.3% 언더퍼폼, 벤치마크 -5pp 하회",
-    "PSP Investments": "🟢 Stable — 최고 수익률 12.6%, 오피스 손실 마무리, 자본시장 확대",
+    "국민연금(NPS)":   "🟡 Watch — 대체투자 17% 목표 달성 후 세부 자산군 내 질적 고도화 필요. 해외부동산 오피스 회수 점검 및 PE·인프라 위탁운용사 추가 선정 진행 중. 국내주식 -7.0% 부진 대응 전략 검토.",
+    "CPPIB":           "🟡 Watch — FY2026 Active Equities -$3.5B 손실 재발 방지 대책 수립 필요. PE 22% 하단 수렴 여부와 Real Assets 통합 개편 후 성과 검증이 핵심 모니터링 포인트.",
+    "CalPERS":         "🟢 Stable — PE 목표 비중 17% 향한 순조로운 확대 이행 중. FY2025 수익률 11.6%로 벤치마크 +1.7%p 초과. Private Debt 신설 카테고리 성장 모멘텀 지속.",
+    "OTPP":            "🔴 Alert — 2025년 PE 포트폴리오 -5.3% 언더퍼폼으로 벤치마크 -5.0%p 하회. Venture Growth +30.2% 선전에도 전체 성과 부진. PE 전략 재검토 및 GP 재선별 필요.",
+    "PSP Investments": "🟢 Stable — FY2025 수익률 12.6%로 분석 대상 중 최고 성과. 5년 누적 수익률 10.6%. 오피스 손실 인식 완료, 자본시장(48.7%) 역대 최고. 안정적 성장 궤도 진입.",
 }
 
 # 뉴스 키워드
@@ -778,12 +868,20 @@ if page == "🏠 Radar 메인":
         char = FUND_CHARACTERISTIC.get(fund,"")
         sig_color = "#b91c1c" if "🔴" in sig else ("#b45309" if "🟡" in sig else "#15803d")
         row_bg = "#f8fafc" if fi % 2 == 0 else "#ffffff"
-        mx += f"<tr style='background:{row_bg};border-bottom:1px solid #e2e8f0'>"
-        mx += (f"<td style='padding:10px 12px'>"
-               f"<b style='color:#0f172a;font-size:13px'>{fund}</b><br>"
-               f"<span style='font-size:11px;color:#64748b'>{m['country']} | {m['type']}</span><br>"
-               f"<span style='font-size:11px;color:#475569'>AUM: {m['aum']}</span><br>"
-               f"<span style='font-size:11px;color:{sig_color}'>{sig[:40]}</span>"
+        # 시그널 배지 (컴팩트)
+        sig_parts = sig.split("—")
+        sig_badge = sig_parts[0].strip() if sig_parts else sig
+        sig_detail = sig_parts[1].strip()[:60] if len(sig_parts) > 1 else ""
+
+        mx += f"<tr style='background:{row_bg};border-bottom:2px solid #e2e8f0;vertical-align:top'>"
+        mx += (f"<td style='padding:12px 14px;min-width:160px'>"
+               f"<b style='color:#0f172a;font-size:14px'>{fund}</b><br>"
+               f"<span style='font-size:10px;color:#94a3b8'>{m['country']} | {m['type']}</span><br>"
+               f"<span style='font-size:10px;color:#64748b'>AUM: {m['aum']}</span><br>"
+               f"<span style='display:inline-block;margin-top:5px;font-size:10px;font-weight:700;"
+               f"color:{sig_color};background:{'#fef2f2' if '🔴' in sig else ('#fffbeb' if '🟡' in sig else '#f0fdf4')};"
+               f"padding:2px 7px;border-radius:10px'>{sig_badge}</span><br>"
+               f"<span style='font-size:10px;color:#64748b;line-height:1.5'>{sig_detail}</span>"
                f"</td>")
         # ALT_CLASSES
         alt_sum = 0
@@ -812,7 +910,14 @@ if page == "🏠 Radar 메인":
                f"<b style='font-size:15px;color:#1d4ed8'>{alt_sum:.1f}%</b><br>"
                f"<span style='font-size:10px;color:{alt_col}'>{alt_arr}</span></td>")
         # 기관 특징
-        mx += f"<td style='padding:8px 12px;font-size:11px;color:#475569;line-height:1.5'>{char}</td>"
+        # 기관 특징 - 첫 2문장을 굵게, 나머지는 일반 폰트
+        char_sentences = [s.strip() for s in char.replace('. ', '.|||').split('|||') if s.strip()]
+        char_html = ""
+        for ci2, sent in enumerate(char_sentences[:4]):
+            weight = "700" if ci2 == 0 else "400"
+            col2   = "#1e293b" if ci2 == 0 else "#475569"
+            char_html += f"<span style='font-weight:{weight};color:{col2}'>{sent}.</span> "
+        mx += f"<td style='padding:10px 14px;font-size:11.5px;line-height:1.75;max-width:280px;vertical-align:top'>{char_html}</td>"
         mx += "</tr>"
 
     mx += "</tbody></table>"
@@ -1446,7 +1551,7 @@ elif page == "📊 자산군별 비교":
                         d_valid = d is not None and d == d
                         d_col = "#15803d" if (d_valid and d>0) else ("#b91c1c" if (d_valid and d<0) else "#64748b")
                         d_str = f"{'▲+' if d>0 else '▼'}{abs(d):.1f}pp" if d_valid else "–"
-                        pre_str = f"{row['전기(%)']:.1f}%" if row['전기(%)'] == row['전기(%)'] else "–"
+                        pre_str = f"{row['전기(%)']:.1f}%" if pd.notna(row['전기(%)']) else "–"
                         bg = "#f0f7ff" if _ % 2 == 0 else "#ffffff"
                         fund_color = fund_color_map.get(row['기관'], '#64748b')
                         tbl += (f"<tr style='background:{bg};border-bottom:1px solid #f1f5f9'>"
@@ -1457,7 +1562,7 @@ elif page == "📊 자산군별 비교":
                                 f"<td style='padding:8px 10px;text-align:right;font-size:15px;font-weight:700;color:#1d4ed8'>{row['비중(%)']:.1f}%</td>"
                                 f"<td style='padding:8px 10px;text-align:right;color:#64748b'>{pre_str}</td>"
                                 f"<td style='padding:8px 10px;text-align:right;font-weight:600;color:{d_col}'>{d_str}</td>"
-                                f"<td style='padding:8px 10px;font-size:11px;color:#475569;line-height:1.5'>{row['기관 특징'][:60]}…</td>"
+                                f"<td style='padding:8px 10px;font-size:11px;color:#475569;line-height:1.6'>{row['기관 특징'].split('.')[0].strip()}.</td>"
                                 f"</tr>")
                     tbl += "</tbody></table>"
                     st.markdown(tbl, unsafe_allow_html=True)
