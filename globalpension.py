@@ -417,64 +417,74 @@ st.set_page_config(
 # CSS
 st.markdown("""
 <style>
-[data-testid="stSidebar"] { background-color: #0b1220; }
+/* ── 사이드바 ── */
+[data-testid="stSidebar"] { background-color: #0f1923; }
 [data-testid="stSidebar"] * { color: #dce6f0 !important; }
 
-/* 메인 배경 */
-.stApp { background-color: #0d1117; }
-
-/* 탭 스타일 */
+/* ── 탭 ── */
 [data-testid="stTabs"] button {
     font-size: 13px !important;
     font-weight: 600 !important;
-    padding: 6px 14px !important;
-    color: #8fa3b8 !important;
+    padding: 6px 16px !important;
+    color: #64748b !important;
 }
 [data-testid="stTabs"] button[aria-selected="true"] {
-    color: #90caf9 !important;
+    color: #60a5fa !important;
     border-bottom: 2px solid #3b82f6 !important;
 }
 
-/* 기관 개요 카드 */
+/* ── 기관 개요 카드 ── */
 .metric-card {
-    background: #141e2e;
+    background: #1a2535;
     border-radius: 10px;
     padding: 14px 16px;
     border-left: 4px solid #3b82f6;
     margin-bottom: 8px;
-    color: #c9d6e3;
+    color: #cbd5e1;
     line-height: 1.8;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
-.metric-card b { color: #f0f4f8; }
+.metric-card b { color: #f1f5f9; }
 
-/* 기관 헤더 배너 */
+/* ── 기관 헤더 배너 ── */
 .fund-header {
-    background: linear-gradient(90deg, #162032, #0b1220);
+    background: #1a2535;
     border-radius: 8px;
     padding: 14px 20px;
-    margin-bottom: 14px;
-    border-bottom: 1px solid #1e3a5f;
+    margin-bottom: 16px;
+    border: 1px solid #2d4a6e;
 }
 
-/* 섹션 제목 h5 */
-h5 { color: #a8bfd4 !important; margin-top: 8px !important; }
+/* ── 뱃지 ── */
+.badge-alt       { background:#1e3a5f; color:#93c5fd; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+.badge-fund      { background:#14532d; color:#86efac; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+.badge-risk-red  { background:#450a0a; color:#fca5a5; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+.badge-risk-yel  { background:#422006; color:#fde68a; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+.badge-risk-grn  { background:#14532d; color:#86efac; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
 
-/* 뱃지 */
-.badge-alt  { background:#1e3a5f; color:#90caf9; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-.badge-fund { background:#1b3a2d; color:#81c995; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-.badge-risk-red  { background:#4a1515; color:#f48fb1; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-.badge-risk-yel  { background:#3a2e00; color:#fff176; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-.badge-risk-grn  { background:#1b3a2d; color:#a5d6a7; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-
-/* st.progress 색상 */
-[data-testid="stProgress"] > div { background-color: #1e3a5f !important; }
-[data-testid="stProgress"] > div > div { background-color: #3b82f6 !important; }
-
-/* 구분선 */
-hr { border-color: #1e293b !important; margin: 18px 0 !important; }
+/* ── 구분선 ── */
+hr { border-color: #334155 !important; margin: 20px 0 !important; }
 </style>
 """, unsafe_allow_html=True)
+
+# ── 차트 공통 레이아웃 헬퍼 ──────────────────────────────────
+CHART_BG   = "#1e293b"   # 차트 내부 배경 (짙은 슬레이트, 배경색과 대비)
+PAPER_BG   = "rgba(0,0,0,0)"  # 투명 — Streamlit 배경 그대로 사용
+GRID_COLOR = "#334155"
+TICK_COLOR = "#e2e8f0"   # 축 레이블: 밝은 흰색 계열
+TITLE_COLOR= "#94a3b8"
+
+def chart_layout(**kwargs):
+    """공통 다크 테마 레이아웃"""
+    base = dict(
+        paper_bgcolor=PAPER_BG,
+        plot_bgcolor=CHART_BG,
+        font=dict(color=TICK_COLOR, size=12),
+        xaxis=dict(gridcolor=GRID_COLOR, tickfont=dict(color=TICK_COLOR, size=12), linecolor=GRID_COLOR),
+        yaxis=dict(gridcolor=GRID_COLOR, tickfont=dict(color=TICK_COLOR, size=12), linecolor=GRID_COLOR),
+        margin=dict(l=10, r=20, t=40, b=10),
+    )
+    base.update(kwargs)
+    return base
 
 # ══════════════════════════════════════════════════════════════
 # 7. SIDEBAR 네비게이션
@@ -679,15 +689,19 @@ elif page == "🏦 기관별 상세":
                     cliponaxis=False,
                 ))
                 fig_bar.update_layout(
-                    title=dict(text=f"{fund} 현재 자산배분", font_size=14, font_color="#94a3b8"),
-                    paper_bgcolor="#0d1117", plot_bgcolor="#141e2e",
-                    font_color="#e2e8f0",
-                    xaxis=dict(gridcolor="#1e293b", ticksuffix="%", range=[0, max(bar_values)*1.3],
-                               tickfont_size=11),
-                    yaxis=dict(tickfont_size=13, categoryorder="array",
+                    title=dict(text=f"{fund} 현재 자산배분", font_size=14,
+                               font=dict(color="#94a3b8")),
+                    paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                    font=dict(color=TICK_COLOR, size=13),
+                    xaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%",
+                               range=[0, max(bar_values)*1.35],
+                               tickfont=dict(color=TICK_COLOR, size=11),
+                               showgrid=True),
+                    yaxis=dict(tickfont=dict(color="#f1f5f9", size=13),
+                               categoryorder="array",
                                categoryarray=list(reversed(bar_labels))),
-                    margin=dict(l=0, r=60, t=40, b=10),
-                    height=300,
+                    margin=dict(l=10, r=70, t=44, b=10),
+                    height=310,
                     showlegend=False,
                 )
                 st.plotly_chart(fig_bar, use_container_width=True, key=f"hbar_{fund}")
@@ -739,10 +753,10 @@ elif page == "🏦 기관별 상세":
                                  color_discrete_map=alt_color_map,
                                  title=f"{fund} 대체투자 자산군별 5개년 비중 추이")
                 fig_ts.update_layout(
-                    paper_bgcolor="#0d1117", plot_bgcolor="#111827",
-                    font_color="#e2e8f0", legend_font_size=11,
-                    yaxis=dict(gridcolor="#1e293b", ticksuffix="%"),
-                    xaxis=dict(gridcolor="#1e293b"),
+                    paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                    font=dict(color=TICK_COLOR, size=12), legend=dict(font=dict(color=TICK_COLOR, size=11), bgcolor="rgba(0,0,0,0)"),
+                    yaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%"),
+                    xaxis=dict(gridcolor=GRID_COLOR),
                     hovermode="x unified",
                 )
                 fig_ts.update_traces(line_width=2)
@@ -761,10 +775,10 @@ elif page == "🏦 기관별 상세":
                                    title=f"{fund} 대체투자 합계 비중 5개년 추이")
                 fig_total.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
                 fig_total.update_layout(
-                    paper_bgcolor="#0d1117", plot_bgcolor="#111827",
-                    font_color="#e2e8f0", showlegend=False,
-                    yaxis=dict(gridcolor="#1e293b", ticksuffix="%"),
-                    xaxis=dict(gridcolor="#1e293b"),
+                    paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                    font=dict(color=TICK_COLOR, size=12), showlegend=False,
+                    yaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%"),
+                    xaxis=dict(gridcolor=GRID_COLOR),
                 )
                 st.plotly_chart(fig_total, use_container_width=True, key=f"total_{fund}")
 
@@ -792,13 +806,13 @@ elif page == "🏦 기관별 상세":
                     ))
                 fig_stk.update_layout(
                     barmode="stack",
-                    paper_bgcolor="#0d1117", plot_bgcolor="#141e2e",
-                    font_color="#e2e8f0",
+                    paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                    font=dict(color=TICK_COLOR, size=12),
                     legend=dict(orientation="h", yanchor="bottom", y=1.02,
                                 xanchor="right", x=1, font_size=11,
                                 bgcolor="rgba(0,0,0,0)"),
-                    yaxis=dict(gridcolor="#1e293b", ticksuffix="%", tickfont_size=11),
-                    xaxis=dict(tickfont_size=12),
+                    yaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%", tickfont=dict(color=TICK_COLOR, size=11)),
+                    xaxis=dict(tickfont=dict(color=TICK_COLOR, size=12)),
                     margin=dict(l=0, r=0, t=10, b=0),
                     height=300,
                 )
@@ -816,10 +830,10 @@ elif page == "🏦 기관별 상세":
                                  color="수익률(%)", color_continuous_scale=["#f48fb1","#94a3b8","#81c995"],
                                  text="수익률(%)")
                 fig_ret.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
-                fig_ret.update_layout(paper_bgcolor="#0d1117",plot_bgcolor="#111827",
-                                      font_color="#e2e8f0",showlegend=False,
-                                      yaxis=dict(gridcolor="#1e293b"),
-                                      xaxis=dict(gridcolor="#1e293b"))
+                fig_ret.update_layout(paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                                      font=dict(color=TICK_COLOR, size=12),showlegend=False,
+                                      yaxis=dict(gridcolor=GRID_COLOR),
+                                      xaxis=dict(gridcolor=GRID_COLOR))
                 st.plotly_chart(fig_ret, use_container_width=True, key=f"ret_{fund}")
 
             with c4:
@@ -915,9 +929,9 @@ elif page == "📊 자산군별 비교":
                 ))
                 fig.update_layout(
                     title=f"{asset} 비중 순위",
-                    paper_bgcolor="#0d1117", plot_bgcolor="#111827",
-                    font_color="#e2e8f0", xaxis_title="비중 (%)",
-                    xaxis=dict(gridcolor="#1e293b"), yaxis=dict(gridcolor="#1e293b"),
+                    paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                    font=dict(color=TICK_COLOR, size=12), xaxis_title="비중 (%)",
+                    xaxis=dict(gridcolor=GRID_COLOR), yaxis=dict(gridcolor=GRID_COLOR),
                     height=300,
                 )
                 st.plotly_chart(fig, use_container_width=True, key=f"bar_{asset}")
@@ -931,9 +945,9 @@ elif page == "📊 자산군별 비교":
                           color="증감(pp)", color_continuous_scale=["#f48fb1","#94a3b8","#81c995"],
                           text="증감(pp)")
             fig2.update_traces(texttemplate="%{text:+.1f}pp", textposition="outside")
-            fig2.update_layout(paper_bgcolor="#0d1117",plot_bgcolor="#111827",
-                               font_color="#e2e8f0",showlegend=False,
-                               yaxis=dict(gridcolor="#1e293b"))
+            fig2.update_layout(paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                               font=dict(color=TICK_COLOR, size=12),showlegend=False,
+                               yaxis=dict(gridcolor=GRID_COLOR))
             st.plotly_chart(fig2, use_container_width=True, key=f"delta_{asset}")
 
             st.divider()
@@ -958,10 +972,10 @@ elif page == "📊 자산군별 비교":
                                   color_discrete_map=fund_color_map,
                                   title=f"{asset} 기관별 5개년 비중 변화")
                 fig_ts5.update_layout(
-                    paper_bgcolor="#0d1117", plot_bgcolor="#111827",
-                    font_color="#e2e8f0", legend_font_size=11,
-                    yaxis=dict(gridcolor="#1e293b", ticksuffix="%"),
-                    xaxis=dict(gridcolor="#1e293b"),
+                    paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                    font=dict(color=TICK_COLOR, size=12), legend=dict(font=dict(color=TICK_COLOR, size=11), bgcolor="rgba(0,0,0,0)"),
+                    yaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%"),
+                    xaxis=dict(gridcolor=GRID_COLOR),
                     hovermode="x unified",
                 )
                 fig_ts5.update_traces(line_width=2.5)
@@ -984,8 +998,8 @@ elif page == "📊 자산군별 비교":
                     hoverongaps=False,
                 ))
                 fig_heat.update_layout(
-                    paper_bgcolor="#0d1117", plot_bgcolor="#111827",
-                    font_color="#e2e8f0", height=230,
+                    paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                    font=dict(color=TICK_COLOR, size=12), height=230,
                     margin=dict(l=0, r=0, t=10, b=0),
                     xaxis=dict(side="top"),
                 )
@@ -1147,7 +1161,8 @@ elif page == "📁 Data Room":
                     text="비중(%)"
                 )
                 fig_dr.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
-                fig_dr.update_layout(paper_bgcolor="#0d1117",plot_bgcolor="#111827",font_color="#e2e8f0")
+                fig_dr.update_layout(paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                                     font=dict(color=TICK_COLOR, size=12))
                 st.plotly_chart(fig_dr, use_container_width=True)
             else:
                 st.warning("배분 데이터를 추출하지 못했습니다.")
