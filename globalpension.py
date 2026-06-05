@@ -248,6 +248,101 @@ REBAL_NARRATIVE = {
     },
 }
 
+# 연도별 리밸런싱 해설 (key: (from_year, to_year) - norm_year 기준)
+REBAL_YEARLY = {
+    "국민연금(NPS)": {
+        ("2020","2021"): {
+            "title": "저금리 환경 대응 — 대체투자 확대 원년",
+            "text": "저금리 장기화로 채권 수익률이 하락하면서 수익률 제고를 위한 대체투자 확대가 본격 시작됐습니다. 사모주식(PE)을 4.0%→5.0%로 늘리고 인프라도 소폭 증가했습니다. 글로벌 주식 강세(수익률 10.8%)로 공모주식도 우호적이었으며, 채권은 비중을 서서히 줄이기 시작했습니다.",
+        },
+        ("2021","2022"): {
+            "title": "2022 위기 — 주식·채권 동반 하락, -8.2% 손실",
+            "text": "연준 긴축 전환으로 금리가 급등하며 채권과 주식이 동시에 하락하는 유례없는 손실 연도였습니다(수익률 -8.2%). 채권 비중이 43.0%→42.3%로 일부 감소했으나 여전히 높은 채권 비중이 손실을 키웠습니다. 이 경험을 계기로 채권 축소·대체투자 확대 기조가 더욱 강화됐으며, 사모대출(PC)이 이 해부터 독립 항목으로 분리 공시됐습니다.",
+        },
+        ("2022","2023"): {
+            "title": "시장 회복 — 해외주식 주도, 대체투자 순항",
+            "text": "글로벌 증시 반등으로 공모주식이 41.1%→45.2%로 급증하며 수익률 13.6% 회복을 이끌었습니다. PE와 인프라는 목표 비중을 향해 꾸준히 확대됐으며, 부동산은 글로벌 오피스 하락에도 국내 부동산 안정으로 소폭 감소에 그쳤습니다. 채권은 38.8%로 계속 축소됐습니다.",
+        },
+        ("2023","2024"): {
+            "title": "사상 최고 수익률 15.0% — 대체투자 목표 17% 달성",
+            "text": "해외주식 +34.6%(엔비디아 등 AI 관련주 강세)에 힘입어 전체 수익률 15.0%라는 사상 최고 기록을 달성했습니다. 대체투자 합계가 17.1%에 도달해 장기 목표치에 처음 근접했으며, PE(+21.2%)·인프라(+23.0%)도 고수익을 기록했습니다. 채권 비중은 36.0%까지 낮아져 포트폴리오의 성장지향성이 강화됐습니다.",
+        },
+    },
+    "CPPIB": {
+        ("2022","2023"): {
+            "title": "PE 최고점 이후 조정 시작 — 수익률 1.3% 부진",
+            "text": "PE가 32%→33%로 소폭 증가했으나 이후 축소 전환점이 됐습니다. 글로벌 PE 밸류에이션 재조정과 엑시트 시장 위축이 시작된 해로, 수익률 1.3%로 크게 저조했습니다. 인플레 대응을 위해 실물자산(인프라·부동산) 비중을 유지했으며, 채권을 7%→12%로 확대해 금리 수혜를 추구했습니다.",
+        },
+        ("2023","2024"): {
+            "title": "PE 본격 축소 — 공모주식 확대로 유동성 확보",
+            "text": "PE를 33%→31%로 축소하며 구조적 리밸런싱이 가속됐습니다. Private Credit을 13%→13%로 유지하며 고금리 대출 수익을 추구했고, 공모주식을 24%→28%로 확대해 유동성을 높였습니다. 수익률 8.0%로 회복세를 보였으나 PE 포트폴리오의 미실현 손실이 지속됐습니다.",
+        },
+        ("2024","2025"): {
+            "title": "PE 추가 감소 — 채권 확대로 금리 고점 수혜",
+            "text": "PE가 31%→29%로 추가 감소했으며, 채권을 12%→15%로 크게 늘려 고금리 환경에서 확정금리 수익을 확보했습니다. Private Credit은 13%→11%로 소폭 축소됐으며, 인프라는 8%→9%로 안정적으로 유지됐습니다. 수익률 9.3%.",
+        },
+        ("2025","2026"): {
+            "title": "대규모 구조 개편 — Real Assets 통합, PE 22%로 급감",
+            "text": "5년간 가장 큰 구조적 변화가 일어난 해입니다. PE가 29%→22%로 -7%p 급감했으며, 부동산·인프라·에너지를 'Real Assets'로 통합한 새로운 분류 체계가 도입됐습니다. 공모주식을 29%→36%로 확대해 유동성을 대폭 높였으나, Active Equities 전략에서 -$3.5B 손실이 발생해 전체 수익률은 7.8%에 그쳤습니다.",
+        },
+    },
+    "CalPERS": {
+        ("2021","2022"): {
+            "title": "PE 확대 원년 — 2022년 -6.1% 손실로 전략 재검토",
+            "text": "PE를 7.9%→11.0%로 대폭 확대하는 전략적 전환을 시작했습니다. 그러나 같은 해 금리 급등·주식 하락으로 -6.1% 손실을 기록하며 포트폴리오 전체를 재검토하게 됩니다. 헤지펀드/기타 비중(7→10.5%)은 이후 지속적으로 축소되는 전환점이 됩니다.",
+        },
+        ("2022","2023"): {
+            "title": "헤지펀드 대폭 축소 — 단순화·비용절감 전략 본격화",
+            "text": "헤지펀드/기타를 10.5%→5.5%로 절반 가까이 줄이는 대규모 단순화 작업이 진행됐습니다. 이는 복잡한 전략의 비용 대비 효율성에 대한 이사회의 재평가 결과입니다. PE는 11.9%로 확대를 지속했으며, 부동산도 11%대를 유지했습니다. 수익률 5.8%로 회복.",
+        },
+        ("2023","2024"): {
+            "title": "부동산 급락 — 오피스 손실 본격 반영",
+            "text": "부동산이 11.2%→8.5%로 -2.7%p 급감했습니다. 이는 샌프란시스코·LA 등 캘리포니아 주요 도시 오피스 시장 침체가 직접 반영된 것으로, 상당 규모의 평가손이 인식됐습니다. PE는 14.1%로 꾸준히 확대됐으며, 수익률 9.3%로 양호했습니다.",
+        },
+        ("2024","2025"): {
+            "title": "PE 15.7%로 역대 최고 — Private Credit 신규 성장",
+            "text": "PE가 15.7%로 5년간 최고치를 기록하며 목표 17% 달성에 근접했습니다. Private Credit이 독립 카테고리로 성장해 3.4%에 달했으며, 고금리 대출 수익이 긍정적으로 기여했습니다. 부동산은 7.4%로 추가 감소했으나 감소 폭은 완화됐습니다. 수익률 11.6%, 벤치마크 +1.7%p 초과.",
+        },
+    },
+    "OTPP": {
+        ("2021","2022"): {
+            "title": "채권 급확대 — 실질금리 채권으로 인플레 헤지",
+            "text": "채권을 19%→35%로 대폭 확대한 것이 가장 큰 특징입니다. 금리 급등 환경에서 OTPP는 인플레이션 연동 채권(실질금리 상품)을 적극 활용해 손실을 방어했습니다. 인프라도 11%→16%로 확대해 실물자산 헤지를 강화했습니다. 이 해 수익률 4.0%는 글로벌 시장 대비 선방한 결과입니다.",
+        },
+        ("2022","2023"): {
+            "title": "포트폴리오 안정화 — 고금리 환경 적응",
+            "text": "전년의 방어적 포지션을 유지하며 안정 국면을 지속했습니다. PE·인프라·부동산 등 대체투자 비중을 거의 일정하게 유지했으며, Private Credit은 14%→16%로 소폭 확대해 고금리 대출 수익을 추구했습니다. 다만 수익률 1.9%로 부진했으며, 글로벌 PE 밸류에이션 조정의 영향을 받았습니다.",
+        },
+        ("2023","2024"): {
+            "title": "채권 대폭 축소 — 금리 정상화에 맞춰 리밸런싱",
+            "text": "금리 고점 인식 후 채권을 39%→30%로 -9%p 대폭 축소했습니다. 공모주식을 10%→14%로 확대해 성장 자산으로 자금을 이동시켰습니다. Private Credit은 16%→14%로 소폭 축소됐으며, 수익률 9.4%로 회복됐습니다.",
+        },
+        ("2024","2025"): {
+            "title": "Venture Growth 신설 — 인프라 차익 실현",
+            "text": "글로벌 인프라 자산 가격 고점에서 차익을 실현해 인프라를 17%→13%로 축소했습니다. 공모주식이 14%→18%로 확대됐으며, PE에서 Venture Growth 카테고리를 분리·신설해 성장형 자산을 별도 관리하기 시작했습니다. 수익률 6.7%로 벤치마크 대비 -5.0%p 언더퍼폼했으며, PE 포트폴리오 -5.3%가 주요 원인이었습니다.",
+        },
+    },
+    "PSP Investments": {
+        ("2021","2022"): {
+            "title": "Private Credit 확대 — 고금리 전환에 선제 대응",
+            "text": "금리 상승 전환 초기에 Private Credit을 7.1%→9.5%로 확대해 변동금리 대출 수익을 선제적으로 확보했습니다. 부동산은 13.1%→13.5%를 유지했으나 이후 하락의 전환점이 됐습니다. 인프라도 9%→10.2%로 소폭 증가했으며 수익률 10.9%로 양호했습니다.",
+        },
+        ("2022","2023"): {
+            "title": "인프라 확대 — 실물자산 헤지 강화",
+            "text": "인프라를 10.2%→12.1%로 확대해 인플레이션 헤지와 안정적 현금흐름을 강화했습니다. Private Credit도 9.5%→10.7%로 지속 성장했습니다. 부동산은 13.1%로 고점을 유지했으나 글로벌 오피스 시장 우려가 커지기 시작했습니다. 수익률 4.4%로 다소 낮았습니다.",
+        },
+        ("2023","2024"): {
+            "title": "오피스 손실 직격 — 부동산 13.1%→10.3% 급감",
+            "text": "글로벌 오피스 시장 침체가 직접 반영되며 부동산이 13.1%→10.3%로 -2.8%p 급감했습니다. 북미·유럽 오피스 자산의 대규모 평가손이 인식됐으며, 이는 FY2025까지 지속됩니다. 인프라는 12.1%→13.0%로 최고치를 기록했으며 수익률 7.2%였습니다.",
+        },
+        ("2024","2025"): {
+            "title": "손실 마무리 + 자본시장 최고치 — 수익률 12.6%",
+            "text": "오피스 손실 인식이 마무리 단계에 접어들며 부동산이 10.3%→8.9%로 추가 감소했으나 속도는 완화됐습니다. 공모주식(자본시장)을 21%→26.6%로 크게 확대해 5년간 최고 비중을 기록했으며, 포트폴리오 안정화와 시장 상승이 맞물려 수익률 12.6%라는 최고 성과를 달성했습니다. 인프라는 13%→10.7%로 축소되며 차익 실현이 진행됐습니다.",
+        },
+    },
+}
+
+
 # 뉴스 키워드
 NEWS_KEYWORDS = {
     "국민연금(NPS)":   ["국민연금","NPS Korea","국민연금공단"],
@@ -859,75 +954,98 @@ elif page == "🏦 기관별 상세":
                 )
                 st.plotly_chart(fig_stk, use_container_width=True, key=f"stk_{fund}")
 
-                # ── 리밸런싱 분석 멘트 ──────────────────────────────
-                first_yr_raw = raw_years2[0]
-                last_yr_raw  = raw_years2[-1]
-                first_a = alloc_ts_fund2[first_yr_raw]
-                last_a  = alloc_ts_fund2[last_yr_raw]
-                changes = {cls: round(last_a.get(cls,0) - first_a.get(cls,0), 1) for cls in ALL_CLASSES}
-                top_inc = sorted([(c,d) for c,d in changes.items() if d > 0.3], key=lambda x: -x[1])
-                top_dec = sorted([(c,d) for c,d in changes.items() if d < -0.3], key=lambda x: x[1])
-                alt_start = sum(first_a.get(c,0) for c in ALT_CLASSES)
-                alt_end   = sum(last_a.get(c,0)  for c in ALT_CLASSES)
-                alt_delta = round(alt_end - alt_start, 1)
-                alt_arrow = "▲" if alt_delta > 0 else "▼"
-                alt_color = "#4ade80" if alt_delta > 0 else "#f87171"
+                # ── 연도별 리밸런싱 분석 탭 ────────────────────────────
+                st.markdown(
+                    "<p style='font-size:16px;font-weight:700;color:#1d4ed8;margin:16px 0 8px'>"
+                    "🔄 연도별 리밸런싱 분석</p>",
+                    unsafe_allow_html=True
+                )
+                if len(raw_years2) >= 2:
+                    year_pairs  = [(raw_years2[i], raw_years2[i+1]) for i in range(len(raw_years2)-1)]
+                    pair_labels = [f"{norm_year(a)} → {norm_year(b)}" for a,b in year_pairs]
+                    rebal_tabs  = st.tabs(pair_labels)
 
-                inc_items = "".join(
-                    f"<li><b style='color:#1d4ed8'>{c}</b>: {first_a.get(c,0):.1f}% → {last_a.get(c,0):.1f}% "
-                    f"<span style='color:#4ade80'>(+{d:.1f}%p)</span></li>"
-                    for c,d in top_inc
-                ) or "<li style='color:#64748b'>뚜렷한 확대 자산군 없음</li>"
+                    for ri, (rtab, (yr_from, yr_to)) in enumerate(zip(rebal_tabs, year_pairs)):
+                        with rtab:
+                            fa = alloc_ts_fund2[yr_from]
+                            ta = alloc_ts_fund2[yr_to]
+                            chg = {cls: round(ta.get(cls,0) - fa.get(cls,0), 1) for cls in ALL_CLASSES}
+                            inc_l = sorted([(c,d) for c,d in chg.items() if d > 0.1], key=lambda x:-x[1])
+                            dec_l = sorted([(c,d) for c,d in chg.items() if d < -0.1], key=lambda x:x[1])
+                            a_s   = sum(fa.get(c,0) for c in ALT_CLASSES)
+                            a_e   = sum(ta.get(c,0) for c in ALT_CLASSES)
+                            a_d   = round(a_e - a_s, 1)
+                            a_col = "#15803d" if a_d > 0 else ("#b91c1c" if a_d < 0 else "#64748b")
+                            a_arr = "▲" if a_d > 0 else ("▼" if a_d < 0 else "→")
 
-                dec_items = "".join(
-                    f"<li><b style='color:#a78bfa'>{c}</b>: {first_a.get(c,0):.1f}% → {last_a.get(c,0):.1f}% "
-                    f"<span style='color:#f87171'>({d:.1f}%p)</span></li>"
-                    for c,d in top_dec
-                ) or "<li style='color:#64748b'>뚜렷한 축소 자산군 없음</li>"
+                            # 요약 헤더
+                            st.markdown(
+                                f"<div style='background:#f8fafc;border:1px solid #e2e8f0;"
+                                f"border-radius:8px;padding:12px 16px;margin-bottom:12px;"
+                                f"font-size:13px;color:#334155'>"
+                                f"대체투자 합계: <b style='color:#1e293b'>{a_s:.1f}%</b>"
+                                f" → <b style='color:{a_col};font-size:15px'>{a_e:.1f}%</b>"
+                                f"&nbsp;<span style='color:{a_col};font-weight:700'>"
+                                f"{a_arr} {abs(a_d):.1f}%p</span></div>",
+                                unsafe_allow_html=True
+                            )
 
-                rebal_html = f"""
-<div style='background:#162032;border:1px solid #2d4a6e;border-radius:10px;padding:18px 22px;margin-top:12px'>
-  <p style='font-size:15px;font-weight:700;color:#1d4ed8;margin:0 0 10px'>
-    🔄 리밸런싱 분석 ({norm_year(first_yr_raw)} → {norm_year(last_yr_raw)})
-  </p>
-  <p style='font-size:13px;color:#334155;margin:0 0 6px'>
-    대체투자 합계: <b style='color:#1e293b'>{alt_start:.1f}%</b> →
-    <b style='color:{alt_color};font-size:15px'>{alt_end:.1f}%</b>
-    &nbsp;<span style='color:{alt_color}'>{alt_arrow} {abs(alt_delta):.1f}%p</span>
-  </p>
-  <div style='display:flex;gap:24px;margin-top:10px'>
-    <div style='flex:1'>
-      <p style='font-size:12px;font-weight:700;color:#4ade80;margin:0 0 6px'>📈 비중 확대</p>
-      <ul style='margin:0;padding-left:16px;font-size:13px;color:#334155;line-height:1.9'>{inc_items}</ul>
-    </div>
-    <div style='flex:1'>
-      <p style='font-size:12px;font-weight:700;color:#f87171;margin:0 0 6px'>📉 비중 축소</p>
-      <ul style='margin:0;padding-left:16px;font-size:13px;color:#334155;line-height:1.9'>{dec_items}</ul>
-    </div>
-  </div>
-  <p style='font-size:12px;color:#64748b;margin:10px 0 0'>
-    ※ 기관별 회계연도 기준: NPS(12월말)·OTPP(12월말)·CPPIB·PSP(3월말)·CalPERS(6월말)
-  </p>
-</div>"""
-                st.markdown(rebal_html, unsafe_allow_html=True)
+                            # 확대 / 축소 2컬럼
+                            inc_html = "".join(
+                                f"<div style='padding:5px 0;border-bottom:1px solid #f1f5f9'>"
+                                f"<span style='font-size:12px;color:#475569;font-weight:600'>{c}</span><br>"
+                                f"<span style='font-size:13px;color:#1e293b'>"
+                                f"{fa.get(c,0):.1f}% → {ta.get(c,0):.1f}%</span>"
+                                f"&nbsp;<span style='color:#15803d;font-weight:700;font-size:13px'>"
+                                f"(+{d:.1f}%p)</span></div>"
+                                for c,d in inc_l
+                            ) or "<span style='color:#94a3b8;font-size:12px'>변동 없음</span>"
 
-                # ── 서술형 해설 ──────────────────────────────────
-                narr = REBAL_NARRATIVE.get(fund, {})
-                if narr:
-                    ctx  = narr.get("context","")
-                    iss  = narr.get("issue","")
-                    otlk = narr.get("outlook","")
-                    narr_html = f"""
-<div style='margin-top:14px;padding:16px 20px;background:#f0f7ff;border-radius:10px;
-            border-left:4px solid #3b82f6;font-size:13.5px;line-height:1.85;color:#1e293b'>
-  <p style='font-weight:700;color:#1d4ed8;margin:0 0 10px;font-size:14px'>
-    📝 리밸런싱 배경 해설
-  </p>
-  <p style='margin:0 0 10px'><b style='color:#1e40af'>[ 전략 배경 ]</b>&nbsp; {ctx}</p>
-  <p style='margin:0 0 10px'><b style='color:#b45309'>[ 주요 이슈 ]</b>&nbsp; {iss}</p>
-  <p style='margin:0'><b style='color:#15803d'>[ 향후 전망 ]</b>&nbsp; {otlk}</p>
-</div>"""
-                    st.markdown(narr_html, unsafe_allow_html=True)
+                            dec_html = "".join(
+                                f"<div style='padding:5px 0;border-bottom:1px solid #f1f5f9'>"
+                                f"<span style='font-size:12px;color:#475569;font-weight:600'>{c}</span><br>"
+                                f"<span style='font-size:13px;color:#1e293b'>"
+                                f"{fa.get(c,0):.1f}% → {ta.get(c,0):.1f}%</span>"
+                                f"&nbsp;<span style='color:#b91c1c;font-weight:700;font-size:13px'>"
+                                f"({d:.1f}%p)</span></div>"
+                                for c,d in dec_l
+                            ) or "<span style='color:#94a3b8;font-size:12px'>변동 없음</span>"
+
+                            col_l, col_r = st.columns(2)
+                            with col_l:
+                                st.markdown(
+                                    "<p style='font-size:12px;font-weight:700;color:#15803d;"
+                                    "margin:0 0 6px'>📈 비중 확대</p>"
+                                    f"<div style='font-size:13px'>{inc_html}</div>",
+                                    unsafe_allow_html=True
+                                )
+                            with col_r:
+                                st.markdown(
+                                    "<p style='font-size:12px;font-weight:700;color:#b91c1c;"
+                                    "margin:0 0 6px'>📉 비중 축소</p>"
+                                    f"<div style='font-size:13px'>{dec_html}</div>",
+                                    unsafe_allow_html=True
+                                )
+
+                            # 기간별 해설
+                            nkey = (norm_year(yr_from), norm_year(yr_to))
+                            yearly = REBAL_YEARLY.get(fund, {}).get(nkey, {})
+                            if yearly:
+                                t_title = yearly.get("title","")
+                                t_text  = yearly.get("text","")
+                                st.markdown(
+                                    f"<div style='margin-top:14px;padding:14px 18px;"
+                                    f"background:#f0f7ff;border-left:4px solid #3b82f6;"
+                                    f"border-radius:0 8px 8px 0;font-size:13.5px;line-height:1.8;"
+                                    f"color:#1e293b'>"
+                                    f"<p style='font-weight:700;color:#1d4ed8;margin:0 0 8px'>"
+                                    f"📝 {t_title}</p>"
+                                    f"<p style='margin:0'>{t_text}</p>"
+                                    f"<p style='font-size:11px;color:#94a3b8;margin:8px 0 0'>"
+                                    f"※ 회계연도: NPS·OTPP(12월말) / CPPIB·PSP(3월말) / CalPERS(6월말)</p>"
+                                    f"</div>",
+                                    unsafe_allow_html=True
+                                )
 
             st.divider()
 
