@@ -219,6 +219,35 @@ RECENT_ISSUES = {
     "PSP Investments":"FY2025 12.6% 수익률. 5년 10.6%. 부동산 오피스 손실 마무리. 자본시장 비중 48.7% 확대.",
 }
 
+# 기관별 리밸런싱 배경 해설 (5개년)
+REBAL_NARRATIVE = {
+    "국민연금(NPS)": {
+        "context": "국민연금은 2021~2024년 동안 장기 목표인 대체투자 17% 달성을 위해 체계적 확대 전략을 이행했습니다. 저금리 환경과 공모시장 변동성 확대에 대응해 사모(PE)·인프라 비중을 꾸준히 늘린 반면, 채권 비중은 금리 상승 리스크를 반영해 단계적으로 축소했습니다.",
+        "issue": "2022년 글로벌 주식·채권 동반 하락으로 -8.2% 손실을 기록했으나, 이후 대체자산의 방어적 역할이 부각되며 대체투자 확대 기조를 강화했습니다. 공모주식은 해외 비중(특히 북미·선진국)을 늘려 2023~2024년 높은 성과를 거뒀습니다.",
+        "outlook": "2025년 이후 인프라와 사모대출 중심의 추가 확대가 예상되며, 국내 부동산은 상업용 오피스 약세로 비중 유지 또는 축소될 전망입니다.",
+    },
+    "CPPIB": {
+        "context": "CPPIB는 FY2022~FY2026 동안 액티브 알파 전략의 일환으로 사모주식(PE) 비중을 32%→22%로 큰 폭 축소했습니다. 이는 2022~2023년 PE 밸류에이션 조정과 엑시트 시장 위축에 대응한 것으로, 동시에 공모주식을 27%→36%로 확대해 유동성을 확보했습니다.",
+        "issue": "인프라·부동산을 FY2026부터 'Real Assets'로 통합 공시하는 구조 개편이 이루어졌으며, 지속가능에너지 인프라를 별도 카테고리로 신설했습니다. Active Equities 전략에서 FY2026에 -$3.5B 손실이 발생해 공모주식 내 전략 재검토 중입니다.",
+        "outlook": "PE 비중 축소가 일단락되고 Private Credit은 금리 고점 수혜로 유지될 전망입니다. 지속가능에너지 인프라는 중장기 확대 기조를 유지할 것으로 보입니다.",
+    },
+    "CalPERS": {
+        "context": "CalPERS는 FY2021~FY2025 동안 사모주식(PE)을 7.9%→15.7%로 두 배 이상 확대했습니다. 이는 Board가 승인한 PE 목표 비중 상향(13%→17%)의 이행 과정이며, 공모주식 중심의 포트폴리오에서 탈피해 초과수익 창출을 목표로 합니다.",
+        "issue": "부동산 비중이 11.9%→7.4%로 감소했는데, 이는 오피스·소매 부동산 평가손 반영과 포트폴리오 구조조정의 결과입니다. 헤지펀드/기타 비중도 10.5%→3.4%로 대폭 축소되어 복잡성을 줄이고 비용을 절감하는 방향으로 이동했습니다.",
+        "outlook": "펀딩비율 79% 개선 추세가 지속되면 PE 추가 확대 여력이 생기며, Private Debt 신설 카테고리가 본격화될 전망입니다.",
+    },
+    "OTPP": {
+        "context": "OTPP는 2021~2025년 인프라를 11%→13%로 유지하다 고점(17%) 이후 축소했고, 대신 공모주식을 11%→18%로 확대했습니다. 2022~2023년 글로벌 인프라 자산 가격 상승으로 차익을 실현하고, 유동성 높은 공모 자산을 늘려 리밸런싱 여력을 확보했습니다.",
+        "issue": "PE 비중은 2025년 25%로 소폭 축소됐는데, Venture Growth 카테고리를 신설해 성장형 자산 내 세분화를 도모했습니다. 2025년 벤치마크 대비 -5.0%p 언더퍼폼은 PE 포트폴리오(-5.3%)의 부진이 주된 원인입니다.",
+        "outlook": "Venture Growth(+30.2%, 2025) 성과를 바탕으로 PE 내 성장형 비중 확대가 이루어질 것으로 예상됩니다.",
+    },
+    "PSP Investments": {
+        "context": "PSP는 FY2021~FY2025 동안 부동산을 13.1%→8.9%로 축소했습니다. 이는 글로벌 오피스 시장 침체와 직접 연관되며, 북미·유럽 오피스 자산의 평가손을 FY2024~FY2025에 걸쳐 본격 반영한 결과입니다. 동시에 공모주식(Capital Markets)을 21%→26.6%로 확대해 하방 리스크를 보완했습니다.",
+        "issue": "Private Credit이 7.1%→10.1%로 증가한 것은 금리 고점 환경에서 대출형 자산의 매력이 높아졌기 때문입니다. 인프라 역시 9%→10.7%로 소폭 늘어났으나, FY2025에는 오히려 13%→10.7%로 축소되며 포트폴리오 재조정이 이루어졌습니다.",
+        "outlook": "오피스 부동산 손실 인식이 마무리 단계에 접어들면서 부동산 비중 추가 감소폭은 제한될 전망이며, 물류·주거형 부동산으로의 전환이 예상됩니다.",
+    },
+}
+
 # 뉴스 키워드
 NEWS_KEYWORDS = {
     "국민연금(NPS)":   ["국민연금","NPS Korea","국민연금공단"],
@@ -414,109 +443,65 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS  ── 다크 테마 전체 적용
+# CSS  ── 라이트 메인 / 다크 사이드바
 st.markdown("""
 <style>
-/* ════════════════════════════════
-   전체 앱 다크 배경
-════════════════════════════════ */
-.stApp, [data-testid="stAppViewContainer"] {
-    background-color: #0d1117 !important;
-}
-[data-testid="stAppViewBlockContainer"] {
-    background-color: #0d1117 !important;
-}
-/* 메인 컨텐츠 영역 텍스트 */
-.stApp, .stApp * {
-    color: #e2e8f0;
-}
-/* 헤딩 */
-h1, h2, h3 { color: #f1f5f9 !important; font-weight: 700 !important; }
-h4, h5     { color: #93c5fd !important; font-weight: 700 !important; }
-
-/* ── 사이드바 ── */
+/* ── 사이드바만 다크 ── */
 [data-testid="stSidebar"],
 [data-testid="stSidebarContent"] {
-    background-color: #0b1220 !important;
+    background-color: #0f1923 !important;
 }
 [data-testid="stSidebar"] * { color: #dce6f0 !important; }
 
 /* ── 탭 ── */
-[data-testid="stTabs"] {
-    background-color: transparent !important;
-}
 [data-testid="stTabs"] button {
     font-size: 13px !important;
     font-weight: 600 !important;
     padding: 6px 16px !important;
-    color: #64748b !important;
-    background: transparent !important;
 }
 [data-testid="stTabs"] button[aria-selected="true"] {
-    color: #60a5fa !important;
+    color: #1d4ed8 !important;
     border-bottom: 2px solid #3b82f6 !important;
+    font-weight: 700 !important;
 }
 
-/* ── 기관 개요 카드 ── */
+/* ── 기관 개요 카드 (라이트 버전) ── */
 .metric-card {
-    background: #1a2535;
+    background: #f0f7ff;
     border-radius: 10px;
     padding: 14px 16px;
     border-left: 4px solid #3b82f6;
     margin-bottom: 8px;
-    color: #cbd5e1 !important;
+    color: #1e293b;
     line-height: 1.8;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
-.metric-card b { color: #f1f5f9 !important; }
+.metric-card b { color: #0f172a; }
 
 /* ── 기관 헤더 배너 ── */
 .fund-header {
-    background: #1a2535;
+    background: linear-gradient(90deg, #1e3a5f, #1e40af);
     border-radius: 8px;
     padding: 14px 20px;
     margin-bottom: 16px;
-    border: 1px solid #2d4a6e;
+    color: #f1f5f9;
 }
+.fund-header span { color: #f1f5f9 !important; }
 
 /* ── 뱃지 ── */
-.badge-alt       { background:#1e3a5f; color:#93c5fd !important; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-.badge-fund      { background:#14532d; color:#86efac !important; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-.badge-risk-red  { background:#450a0a; color:#fca5a5 !important; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-.badge-risk-yel  { background:#422006; color:#fde68a !important; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-.badge-risk-grn  { background:#14532d; color:#86efac !important; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-
-/* ── 구분선 ── */
-hr { border-color: #334155 !important; margin: 20px 0 !important; }
-
-/* ── Streamlit 위젯 다크 처리 ── */
-[data-testid="stSelectbox"] > div,
-[data-testid="stMultiSelect"] > div,
-[data-testid="stTextInput"] > div {
-    background-color: #1a2535 !important;
-    color: #e2e8f0 !important;
-}
-/* expander */
-[data-testid="stExpander"] {
-    background-color: #141e2e !important;
-    border: 1px solid #1e3a5f !important;
-}
-/* info / warning / success 박스 */
-[data-testid="stInfo"]    { background-color: #0c2a4a !important; }
-[data-testid="stWarning"] { background-color: #2a1f00 !important; }
-[data-testid="stSuccess"] { background-color: #0a2a1a !important; }
-
-/* ── 캡션 ── */
-.stCaption, [data-testid="stCaptionContainer"] {
-    color: #64748b !important;
-}
+.badge-alt       { background:#dbeafe; color:#1d4ed8;  padding:3px 9px; border-radius:5px; font-size:12px; font-weight:700; }
+.badge-fund      { background:#dcfce7; color:#15803d;  padding:3px 9px; border-radius:5px; font-size:12px; font-weight:700; }
+.badge-risk-red  { background:#fee2e2; color:#b91c1c;  padding:3px 9px; border-radius:5px; font-size:12px; font-weight:700; }
+.badge-risk-yel  { background:#fef3c7; color:#b45309;  padding:3px 9px; border-radius:5px; font-size:12px; font-weight:700; }
+.badge-risk-grn  { background:#dcfce7; color:#15803d;  padding:3px 9px; border-radius:5px; font-size:12px; font-weight:700; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── 차트 공통 레이아웃 헬퍼 ──────────────────────────────────
-CHART_BG   = "#1e293b"
-PAPER_BG   = "rgba(0,0,0,0)"
-GRID_COLOR = "#334155"
-TICK_COLOR = "#e2e8f0"
+# ── 차트 공통 설정 (라이트 테마 기준) ────────────────────────
+CHART_BG   = "#f8fafc"        # 차트 내부 배경: 연한 회색
+PAPER_BG   = "rgba(0,0,0,0)"  # 외곽 투명
+GRID_COLOR = "#e2e8f0"        # 그리드: 연한 선
+TICK_COLOR = "#1e293b"        # 축 레이블: 진한 색
 TITLE_COLOR= "#94a3b8"
 
 def norm_year(yr: str) -> str:
@@ -771,13 +756,13 @@ elif page == "🏦 기관별 상세":
                     st.markdown(f"""
 <div style='margin-bottom:14px'>
   <div style='display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px'>
-    <span style='font-size:13px;font-weight:600;color:#c9d6e3'>{a}</span>
+    <span style='font-size:13px;font-weight:600;color:#1e293b'>{a}</span>
     <span>
-      <span style='font-size:16px;font-weight:700;color:#f0f4f8'>{cur:.1f}%</span>
+      <span style='font-size:16px;font-weight:700;color:#0f172a'>{cur:.1f}%</span>
       &nbsp;<span style='font-size:12px;color:{delta_color_val};font-weight:600'>{delta_str}</span>
     </span>
   </div>
-  <div style='background:#1e293b;border-radius:4px;height:8px;overflow:hidden'>
+  <div style='background:#e2e8f0;border-radius:4px;height:8px;overflow:hidden'>
     <div style='background:{ac_color};width:{bar_pct:.1f}%;height:100%;border-radius:4px'></div>
   </div>
 </div>""", unsafe_allow_html=True)
@@ -926,6 +911,24 @@ elif page == "🏦 기관별 상세":
 </div>"""
                 st.markdown(rebal_html, unsafe_allow_html=True)
 
+                # ── 서술형 해설 ──────────────────────────────────
+                narr = REBAL_NARRATIVE.get(fund, {})
+                if narr:
+                    ctx  = narr.get("context","")
+                    iss  = narr.get("issue","")
+                    otlk = narr.get("outlook","")
+                    narr_html = f"""
+<div style='margin-top:14px;padding:16px 20px;background:#f0f7ff;border-radius:10px;
+            border-left:4px solid #3b82f6;font-size:13.5px;line-height:1.85;color:#1e293b'>
+  <p style='font-weight:700;color:#1d4ed8;margin:0 0 10px;font-size:14px'>
+    📝 리밸런싱 배경 해설
+  </p>
+  <p style='margin:0 0 10px'><b style='color:#1e40af'>[ 전략 배경 ]</b>&nbsp; {ctx}</p>
+  <p style='margin:0 0 10px'><b style='color:#b45309'>[ 주요 이슈 ]</b>&nbsp; {iss}</p>
+  <p style='margin:0'><b style='color:#15803d'>[ 향후 전망 ]</b>&nbsp; {otlk}</p>
+</div>"""
+                    st.markdown(narr_html, unsafe_allow_html=True)
+
             st.divider()
 
             # 수익률 추이 & 기관 특징
@@ -946,11 +949,11 @@ elif page == "🏦 기관별 상세":
 
             with c4:
                 st.markdown("<p style='font-size:15px;font-weight:700;color:#90caf9'>기관 특징</p>", unsafe_allow_html=True)
-                st.markdown(f"<p style='font-size:13px;color:#c9d6e3;line-height:1.7'>{meta['description']}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='font-size:13px;color:#334155;line-height:1.7'>{meta['description']}</p>", unsafe_allow_html=True)
                 st.markdown("<p style='font-size:15px;font-weight:700;color:#90caf9;margin-top:12px'>최근 운용 방향</p>", unsafe_allow_html=True)
-                st.markdown(f"<p style='font-size:13px;color:#c9d6e3;line-height:1.7'>{meta['strategy']}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='font-size:13px;color:#334155;line-height:1.7'>{meta['strategy']}</p>", unsafe_allow_html=True)
                 st.markdown("<p style='font-size:15px;font-weight:700;color:#fbbf24;margin-top:12px'>⚡ 최근 이슈</p>", unsafe_allow_html=True)
-                st.markdown(f"<div style='background:#1e2a1a;border-left:3px solid #fbbf24;border-radius:4px;padding:10px 14px;font-size:13px;color:#d4e8c2;line-height:1.7'>{issue}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='background:#fffbeb;border-left:3px solid #f59e0b;border-radius:4px;padding:10px 14px;font-size:13px;color:#78350f;line-height:1.7'>{issue}</div>", unsafe_allow_html=True)
 
             # AI 상세 분석
             st.divider()
@@ -1156,12 +1159,20 @@ elif page == "📊 자산군별 비교":
             st.divider()
             if st.button("🧠 AI 자산군 비교 분석", key=f"ai_asset_btn_{asset}"):
                 data = {f: ALLOC[f].get(asset,(None,None)) for f in FUNDS}
-                prompt = f"""분석 자산군: {asset}
-기관별 현재/전기 비중: {json.dumps({f:{{"cur":v[0],"pre":v[1]}} for f,v in data.items()}, ensure_ascii=False)}
-전략 특징: {ASSET_SUMMARY.get(asset,"")}
-JSON 반환:
-{{"leader":"<선도 기관>","laggard":"<뒤처지는 기관>","trend":"<전반적 트렌드 Korean>",
-"opportunity":"<한국 기관투자자 관점 기회 Korean>","caution":"<주의사항 Korean>"}}"""
+                # dict를 f-string 밖에서 먼저 생성 (Python 3.12+ f-string 파싱 이슈 회피)
+                data_json = json.dumps(
+                    {f: {"cur": v[0], "pre": v[1]} for f, v in data.items()},
+                    ensure_ascii=False
+                )
+                asset_summary = ASSET_SUMMARY.get(asset, "")
+                prompt = (
+                    f"분석 자산군: {asset}\n"
+                    f"기관별 현재/전기 비중: {data_json}\n"
+                    f"전략 특징: {asset_summary}\n"
+                    "JSON 반환:\n"
+                    '{"leader":"<선도 기관>","laggard":"<뒤처지는 기관>","trend":"<전반적 트렌드 Korean>",'
+                    '"opportunity":"<한국 기관투자자 관점 기회 Korean>","caution":"<주의사항 Korean>"}'
+                )
                 with st.spinner("AI 분석 중..."):
                     r = ai_call(prompt)
                 if r: st.session_state[f"ai_asset_{asset}"] = r
