@@ -742,10 +742,13 @@ def fetch_google_news(query, lang="en", max_items=12):
             return articles
         root = ET.fromstring(resp.content)
         for item in root.findall(".//item")[:max_items]:
+            source = (item.findtext("source") or "Google News").strip()
             title  = clean_html((item.findtext("title") or "").strip())
+            # 제목 끝 " - 출처명" 중복 제거 (출처는 별도 배지로 표시)
+            if source and title.endswith(f"- {source}"):
+                title = title[: title.rfind(f"- {source}")].rstrip(" -–")
             desc   = clean_html((item.findtext("description") or "").strip())
             link   = (item.findtext("link") or "").strip()
-            source = (item.findtext("source") or "Google News").strip()
             articles.append({
                 "title":       title[:150],
                 "description": desc[:400],
@@ -758,9 +761,9 @@ def fetch_google_news(query, lang="en", max_items=12):
         pass
     return articles
 
-def fetch_asset_news(asset, top_n=5, days=30):
+def fetch_asset_news(asset, days=30):
     """자산군 전용 뉴스: Google News(영문+국문) 검색
-    → 기관투자 맥락 필터 → 관련성 스코어 → 최신순 정렬 상위 top_n"""
+    → 기관투자 맥락 필터 → 관련성 스코어·최신순 정렬 (전체 반환, 표시 시 슬라이스)"""
     q = ASSET_NEWS_QUERIES.get(asset)
     if not q:
         return []
@@ -784,7 +787,7 @@ def fetch_asset_news(asset, top_n=5, days=30):
             seen.add(key)
             scored.append((s, a))
     scored.sort(key=lambda x: (-x[0], -_pub_ts(x[1])))
-    return [a for _, a in scored[:top_n]]
+    return [a for _, a in scored]
 
 def score_news_relevance(title, desc, fund_kws, asset_kws=None):
     """뉴스 관련성 점수 계산 (0~10). 높을수록 핵심 기사."""
@@ -1083,74 +1086,41 @@ with st.sidebar:
     st.session_state["_page_idx"] = PAGE_OPTIONS.index(page)
 
     st.markdown("---")
-    st.caption("🌐 글로벌 연기금 규모 순위 (★ 클릭 → 기관 상세)")
+    st.caption("🌐 글로벌 연기금 규모 순위 (★ = 분석 대상)")
 
-    # ── 순위표: 비분석 기관은 HTML, ★ 분석 기관은 버튼 ────────────
-    # 버튼을 테이블처럼 보이게 하는 CSS
+    # ── 순위표 (정적 HTML 테이블) ─────────────────────────────
     st.markdown("""<style>
 [data-testid="stSidebar"] .rank-row {
     display:flex; align-items:center; justify-content:space-between;
     padding:3px 6px; font-size:11px; color:#cbd5e1;
     border-bottom:1px solid #1e2535;
 }
-[data-testid="stSidebar"] .rank-star button {
-    background:#1a2a40 !important;
-    border:none !important;
-    border-left:3px solid #3b82f6 !important;
-    border-radius:0 !important;
-    color:#93c5fd !important;
-    font-size:11px !important;
-    font-weight:700 !important;
-    padding:3px 6px !important;
-    text-align:left !important;
-    width:100% !important;
-    margin:0 !important;
-    cursor:pointer !important;
-}
-[data-testid="stSidebar"] .rank-star button:hover {
-    background:#1e3a5f !important;
-    color:#bfdbfe !important;
-}
 </style>""", unsafe_allow_html=True)
 
-    # 헤더
-    st.markdown(
+    rank_html = (
         "<div class='rank-row' style='background:#1a2535;color:#90caf9;font-weight:700'>"
         "<span style='width:20px'>#</span>"
         "<span style='flex:1'>기금명</span>"
         "<span style='width:52px;text-align:right'>AUM(B$)</span>"
         "<span style='width:42px;text-align:center'>분류</span>"
-        "</div>",
-        unsafe_allow_html=True
+        "</div>"
     )
-
     for rank, flag, name, aum, cat, fund_key in RANKING_DATA:
-        bg = "#0d1117" if rank % 2 == 1 else "#111827"
-        if fund_key:  # ★ 분석 대상 → 버튼
-            with st.container():
-                st.markdown(f"<div class='rank-star'>", unsafe_allow_html=True)
-                if st.button(
-                    f"{rank}  {flag} {name} ★  {aum}B$",
-                    key=f"rank_nav_{fund_key}",
-                    use_container_width=True,
-                ):
-                    st.session_state["_page_idx"] = 1   # 기관별 상세
-                    st.session_state["nav_fund"]  = fund_key
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
-        else:  # 비분석 기관 → 텍스트
-            st.markdown(
-                f"<div class='rank-row' style='background:{bg}'>"
-                f"<span style='width:20px;color:#64748b'>{rank}</span>"
-                f"<span style='flex:1'>{flag} {name}</span>"
-                f"<span style='width:52px;text-align:right;color:#94a3b8'>{aum}</span>"
-                f"<span style='width:42px;text-align:center;color:#64748b;font-size:10px'>{cat}</span>"
-                f"</div>",
-                unsafe_allow_html=True
-            )
+        bg   = "#0d1117" if rank % 2 == 1 else "#111827"
+        star = " <span style='color:#3b82f6'>★</span>" if fund_key else ""
+        name_style = "color:#93c5fd;font-weight:700" if fund_key else ""
+        rank_html += (
+            f"<div class='rank-row' style='background:{bg}'>"
+            f"<span style='width:20px;color:#64748b'>{rank}</span>"
+            f"<span style='flex:1;{name_style}'>{flag} {name}{star}</span>"
+            f"<span style='width:52px;text-align:right;color:#94a3b8'>{aum}</span>"
+            f"<span style='width:42px;text-align:center;color:#64748b;font-size:10px'>{cat}</span>"
+            f"</div>"
+        )
+    st.markdown(rank_html, unsafe_allow_html=True)
 
     st.markdown(
-        "<p style='font-size:10px;color:#4a5568;margin:4px 6px'>★ 클릭 시 기관별 상세로 이동 | 2024～2025 연차보고서 기준</p>",
+        "<p style='font-size:10px;color:#4a5568;margin:4px 6px'>★ = 분석 대상 5개 기관 | 2024～2025 연차보고서 기준</p>",
         unsafe_allow_html=True
     )
 
@@ -1170,14 +1140,33 @@ if page == "🏠 Radar 메인":
         risk_lv = risk_level(a["title"], a["description"])
         tagged_all.append({**a, "fund_tags": ftags, "asset_tags": atags, "risk": risk_lv})
 
-    n_news       = len(tagged_all)
-    n_asset_iss  = len([a for a in tagged_all if a["asset_tags"]])
-    n_high_alert = len([a for a in tagged_all if a["risk"] == "🔴 High"])
-    top_asset    = "–"
-    if tagged_all:
-        from collections import Counter
-        ac = Counter(a for art in tagged_all for a in art["asset_tags"])
-        top_asset = ac.most_common(1)[0][0] if ac else "–"
+    # 자산군 전용 검색(Google News 영문+국문, 1시간 캐시) + 기관명 검색 태깅 결과 병합
+    with st.spinner("자산군별 최신 뉴스 수집 중..."):
+        asset_arts_map = {}
+        for ac_ in ALT_CLASSES:
+            arts   = fetch_asset_news(ac_)
+            seen_t = {re.sub(r"\W", "", a["title"].lower())[:40] for a in arts}
+            for a in tagged_all:
+                if ac_ in a.get("asset_tags", []):
+                    k = re.sub(r"\W", "", a["title"].lower())[:40]
+                    if k not in seen_t:
+                        seen_t.add(k)
+                        arts.append(a)
+            asset_arts_map[ac_] = arts
+
+    n_news      = len(tagged_all)
+    n_asset_iss = len({re.sub(r"\W", "", a["title"].lower())[:40]
+                       for arts in asset_arts_map.values() for a in arts})
+    _uniq, n_high_alert = set(), 0
+    for a in tagged_all + [a for arts in asset_arts_map.values() for a in arts]:
+        k = re.sub(r"\W", "", a["title"].lower())[:40]
+        if k in _uniq:
+            continue
+        _uniq.add(k)
+        if (a.get("risk") or risk_level(a["title"], a["description"])) == "🔴 High":
+            n_high_alert += 1
+    ac_counts = {ac_: len(arts) for ac_, arts in asset_arts_map.items()}
+    top_asset = max(ac_counts, key=ac_counts.get) if any(ac_counts.values()) else "–"
 
     kpi_cols = st.columns(5)
     kpi_data = [
@@ -1330,21 +1319,9 @@ if page == "🏠 Radar 메인":
         "Real Estate":      "#f59e0b",
         "Hedge Fund/Other": "#6366f1",
     }
-    # 자산군 전용 검색(Google News 영문+국문) — 1시간 캐시
-    with st.spinner("자산군별 최신 뉴스 수집 중..."):
-        asset_news_map = {ac: fetch_asset_news(ac, top_n=5) for ac in ALT_CLASSES}
-
     for ac in ALT_CLASSES:
         ov      = ASSET_OVERVIEW.get(ac, {})
-        # 전용 검색 결과 + 기관명 검색 결과 중 해당 자산군 태그 기사 병합
-        ac_arts = list(asset_news_map.get(ac, []))
-        seen_t  = {re.sub(r"\W", "", a["title"].lower())[:40] for a in ac_arts}
-        for a in tagged_all:
-            if ac in a.get("asset_tags", []):
-                k = re.sub(r"\W", "", a["title"].lower())[:40]
-                if k not in seen_t:
-                    seen_t.add(k)
-                    ac_arts.append(a)
+        ac_arts = asset_arts_map.get(ac, [])
         n_ac    = len(ac_arts)
         top_c   = ac_colors.get(ac, "#3b82f6")
         # 관련 기관 (현재 비중 상위 3개)
