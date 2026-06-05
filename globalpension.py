@@ -343,6 +343,58 @@ REBAL_YEARLY = {
 }
 
 
+# ── 자산군 개요 / 투자매력 / 리스크 / 최근 이슈 ─────────────────
+ASSET_OVERVIEW = {
+    "Private Equity": {
+        "overview":   "비상장 기업 지분 투자를 통해 장기 자본이득을 추구하는 자산군. 바이아웃·성장형·벤처 등 전략별로 위험-수익 프로파일이 상이하며, GP 역량과 빈티지 분산이 핵심 성과 결정 요인임.",
+        "attraction": "장기적 초과수익(알파) 창출 가능 / 경영 참여를 통한 가치 제고 / 공모시장 대비 투자 유니버스 확장 / 인플레이션 환경에서도 실적 연동 수익 확보 가능",
+        "risk":       "장기 비유동성(Lock-up 7~10년) / 경기 침체기 밸류에이션 조정 및 엑시트 지연 / GP 선정 역량에 따른 성과 편차 큼 / 고금리 환경에서 레버리지 바이아웃 수익성 압박",
+        "recent":     "2022~2023년 금리 상승으로 밸류에이션 조정 및 엑시트 시장 위축. 2024년 이후 선택적 회복세. 주요 기관들은 바이아웃 비중 축소 후 성장형·Venture Growth로 전환 중.",
+    },
+    "Private Credit": {
+        "overview":   "비상장 기업 대상 직접대출(Direct Lending)·메자닌·디스트레스드 투자 등을 포함하는 사모 대출 자산군. 2022년 이후 은행 규제 강화로 시장 급성장.",
+        "attraction": "고금리 환경에서 변동금리 구조로 직접 수혜 / 은행 대비 신속한 대출 실행 / PE 대비 하방 보호(담보·우선순위) / 꾸준한 현금흐름 창출",
+        "risk":       "차주 신용위험 집중 / NAV 파이낸싱 등 구조적 리스크 증가 / 경기 침체 시 부실 채권 급증 가능 / 유동성 프리미엄 희석 우려",
+        "recent":     "글로벌 주요 기관들 비중 확대 지속. OTPP·PSP 14~10% 수준 유지. 금리 고점 이후에도 스프레드 매력 유지. NAV 파이낸싱 리스크에 대한 모니터링 강화 필요.",
+    },
+    "Infrastructure": {
+        "overview":   "도로·공항·에너지·데이터센터 등 필수 인프라 자산에 대한 지분/채권 투자. 장기 계약 기반 안정적 현금흐름과 인플레이션 연동 특성이 핵심 매력.",
+        "attraction": "인플레이션 헤지 기능 / 장기 안정적 현금흐름 / 규제·독점적 지위 보호 / 에너지 전환 수요로 재생에너지·디지털 인프라 투자 급성장",
+        "risk":       "규제 리스크 및 정치적 위험 / 초기 개발 단계 프로젝트 비용 초과 / 금리 상승 시 할인율 상승으로 가치 하락 / 글로벌 인프라 가격 고평가 우려",
+        "recent":     "재생에너지(태양광·풍력)·데이터센터 신규 투자 집중. CPPIB 지속가능에너지 +23.2%. PSP 인프라 차익 실현(13%→10.7%). 디지털 인프라 밸류에이션 급등 주의.",
+    },
+    "Real Estate": {
+        "overview":   "상업용·물류·주거·특수목적 부동산 자산에 대한 직접투자 또는 REIT·펀드를 통한 간접투자. 임대수익과 자본이득 두 가지 수익원을 가짐.",
+        "attraction": "인플레이션 헤지 기능 / 임대수익을 통한 안정적 현금흐름 / 자산 담보 리스크 관리 / 물류·데이터센터 등 신산업 부동산 고성장",
+        "risk":       "오피스 시장 구조적 침체(재택근무 정착) / 금리 상승 시 자산가치 하락 및 조달비용 증가 / 상업용 부동산 부실 대출 연쇄 우려 / 지역별 수급 불균형",
+        "recent":     "글로벌 오피스 손실이 CalPERS·PSP·CPPIB 등에 반영 완료 단계. 물류·주거형 선호 지속. 국민연금 국내 부동산 비중 축소 방향. 데이터센터 부동산 별도 카테고리화 진행 중.",
+    },
+    "Hedge Fund/Other": {
+        "overview":   "절대수익 추구 전략(Long/Short·매크로·CTA·Event-driven 등)과 천연자원·원자재·재보험(ILS) 등 특수목적 자산을 포함하는 기타 대체투자 카테고리.",
+        "attraction": "시장 방향성 중립 포지션 / 포트폴리오 분산 효과 / 고금리 환경에서 매크로·CTA 전략 수혜 / 재보험(ILS) 고스프레드 유지",
+        "risk":       "높은 운용 보수(2and20 구조) / 전략 투명성 제한 / 시장 위기 시 유동성 리스크 / 성과의 GP 역량 의존도 높음",
+        "recent":     "CalPERS·OTPP 헤지펀드 비중 대폭 축소(비용 절감 목적). CTA·매크로 전략 2024년 부진. 재보험 ILS는 자연재해 수요로 높은 스프레드 유지. PSP 천연자원 관심 증가.",
+    },
+}
+
+# ── 기관별 특징 요약 ──────────────────────────────────────────
+FUND_CHARACTERISTIC = {
+    "국민연금(NPS)":   "국내 최대 공적연금. 해외 대체투자 확대 기조. PE·인프라 위탁운용사 역량 구축 중. 기금 소진 우려로 수익률 제고 압박.",
+    "CPPIB":           "글로벌 최상위 직접투자 역량 보유. 공동투자(Co-investment) 선도. PE→공모주식 구조 전환 중. Active Equities 손실 관리 필요.",
+    "CalPERS":         "미국 최대 주 공무원연금. PE 목표 비중 상향 이행 중. 부동산 오피스 리스크 관리 완료 단계. 펀딩비율 79% 개선 추세.",
+    "OTPP":            "캐나다 교원연금. 직접투자 비율 높음. Venture Growth 신설로 성장형 강화. 인프라 차익 실현 후 공모주식 확대.",
+    "PSP Investments": "캐나다 연방공무원연금. Private Credit·인프라 직접투자 강점. 오피스 부동산 손실 인식 완료. 자본시장 비중 역대 최고(48.7%).",
+}
+
+# ── 기관별 최근 시그널 ────────────────────────────────────────
+INST_SIGNAL = {
+    "국민연금(NPS)":   "🟡 Watch — 해외부동산 회수 점검, PE·인프라 위탁운용사 추가 선정",
+    "CPPIB":           "🟡 Watch — Active Equities 손실 재발 방지, PE 하단 수렴 여부 모니터링",
+    "CalPERS":         "🟢 Stable — PE 확대 이행 중, 펀딩비율 개선. Private Debt 신설 주목",
+    "OTPP":            "🔴 Alert — PE 포트폴리오 -5.3% 언더퍼폼, 벤치마크 -5pp 하회",
+    "PSP Investments": "🟢 Stable — 최고 수익률 12.6%, 오피스 손실 마무리, 자본시장 확대",
+}
+
 # 뉴스 키워드
 NEWS_KEYWORDS = {
     "국민연금(NPS)":   ["국민연금","NPS Korea","국민연금공단"],
@@ -661,114 +713,170 @@ with st.sidebar:
 
 if page == "🏠 Radar 메인":
     st.title("📡 Institutional Pension Alt Radar")
-    st.caption("대체투자 배분 매트릭스 · AI 종합 해석 · Pension Flow Map")
+    st.caption("글로벌 연기금 대체투자 배분 흐름 분석 대시보드")
 
-    # ── 기관 개요 카드 ──────────────────────────────────────
-    st.subheader("기관 개요 비교")
-    cols = st.columns(len(FUNDS))
-    for i, fund in enumerate(FUNDS):
-        m = FUND_META[fund]
-        alt_cur = sum(v[0] for k,v in ALLOC[fund].items() if k in ALT_CLASSES)
-        alt_pre = sum(v[1] for k,v in ALLOC[fund].items() if k in ALT_CLASSES and v[1] is not None)
-        delta = alt_cur - alt_pre
-        dstr  = f"{'▲' if delta>0 else '▼'} {abs(delta):.1f}%p" if abs(delta)>0.1 else "→"
-        with cols[i]:
-            st.markdown(f"""
-<div class='metric-card'>
-<b style='font-size:15px;color:#0f172a'>{fund}</b><br>
-<span style='color:#64748b;font-size:12px'>{m['country']} | {m['type']}</span><br>
-<span style='font-size:13px;color:#475569'>AUM: <b style='color:#0f172a'>{m['aum']}</b></span><br>
-<span style='font-size:13px;color:#475569'>대체투자: <b style='color:#1d4ed8;font-size:15px'>{alt_cur:.1f}%</b>
- <span style='font-size:12px;color:{"#81c995" if delta>0 else "#f48fb1"}'>{dstr}</span></span>
-</div>""", unsafe_allow_html=True)
+    # ── KPI 카드 ──────────────────────────────────────────────
+    all_articles = fetch_news([kw for kws in NEWS_KEYWORDS.values() for kw in kws[:1]])
+    tagged_all = []
+    for a in all_articles:
+        ftags, atags = tag_article(a["title"], a["description"])
+        risk_lv = risk_level(a["title"], a["description"])
+        tagged_all.append({**a, "fund_tags": ftags, "asset_tags": atags, "risk": risk_lv})
 
-    st.caption("※ OTPP는 레버리지 포함 이펙티브 자산믹스 기준이라 대체투자 비중이 타 기관 대비 높게 표시됨. NPS 대체 세부비중은 보고서 대체투자 구성비에서 환산.")
+    n_news       = len(tagged_all)
+    n_asset_iss  = len([a for a in tagged_all if a["asset_tags"]])
+    n_high_alert = len([a for a in tagged_all if a["risk"] == "🔴 High"])
+    top_asset    = "–"
+    if tagged_all:
+        from collections import Counter
+        ac = Counter(a for art in tagged_all for a in art["asset_tags"])
+        top_asset = ac.most_common(1)[0][0] if ac else "–"
+
+    kpi_cols = st.columns(5)
+    kpi_data = [
+        ("🏦 분석기관", str(len(FUNDS)), "개"),
+        ("📰 최근 뉴스", str(n_news), "건 (30일)"),
+        ("📊 자산군 이슈", str(n_asset_iss), "건"),
+        ("🔴 High Alert", str(n_high_alert), "건"),
+        ("🏆 최다 이슈 자산군", top_asset, ""),
+    ]
+    for col, (label, val, unit) in zip(kpi_cols, kpi_data):
+        with col:
+            st.markdown(
+                f"<div style='background:#f0f7ff;border-left:4px solid #3b82f6;"
+                f"border-radius:8px;padding:12px 14px;margin-bottom:6px'>"
+                f"<p style='font-size:11px;color:#64748b;margin:0 0 4px'>{label}</p>"
+                f"<p style='font-size:22px;font-weight:800;color:#1d4ed8;margin:0'>{val}"
+                f"<span style='font-size:12px;font-weight:400;color:#475569'> {unit}</span></p>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
 
     st.divider()
 
-    # ── 배분 매트릭스 ───────────────────────────────────────
-    st.subheader("🗺 Pension Fund Flow Map – 배분 매트릭스")
+    # ── 배분 매트릭스 (y=기관, x=자산군) ─────────────────────
+    st.subheader("🗺 Pension Fund Flow Map")
+    st.caption("y축=기관 / x축=자산군 | 색상: 대체투자(파랑 강조) / 일반(회색)")
 
-    matrix_rows = []
-    for asset in ALL_CLASSES:
-        row = {"자산군": asset}
-        for fund in FUNDS:
-            cur, pre = ALLOC[fund].get(asset, (None, None))
-            row[fund] = cur
-            row[f"{fund}_delta"] = delta_arrow(cur, pre)
-        matrix_rows.append(row)
-    df_matrix = pd.DataFrame(matrix_rows).set_index("자산군")
+    # 헤더
+    mx = "<table style='width:100%;border-collapse:collapse;font-size:13px'>"
+    mx += "<thead><tr style='background:#1e293b'>"
+    mx += "<th style='padding:10px 12px;text-align:left;color:#94a3b8;width:160px'>기관</th>"
+    for ac in ALT_CLASSES:
+        short = ac.replace("Private ","P.").replace("Hedge Fund/","HF/")
+        mx += f"<th style='padding:8px 6px;text-align:center;color:#93c5fd;font-size:12px'>{short}</th>"
+    for ac in ["Public Equity","Fixed Income"]:
+        short = ac.replace("Public ","Pub.").replace("Fixed ","FI ")
+        mx += f"<th style='padding:8px 6px;text-align:center;color:#94a3b8;font-size:12px'>{short}</th>"
+    mx += "<th style='padding:8px 12px;text-align:center;color:#93c5fd;font-size:12px'>Alt합계</th>"
+    mx += "<th style='padding:8px 12px;text-align:left;color:#64748b;font-size:11px'>기관 특징</th>"
+    mx += "</tr></thead><tbody>"
 
-    # 표 렌더링
-    header_html = "<table style='width:100%;border-collapse:collapse;font-size:14px'>"
-    header_html += "<tr style='background:#1a2535'><th style='padding:10px;text-align:left;color:#475569'>자산군</th>"
-    for fund in FUNDS:
-        header_html += f"<th style='padding:10px;text-align:center;color:#f1f5f9'>{fund}</th>"
-    header_html += "<th style='padding:10px;text-align:center;color:#94a3b8'>자산군 특징</th></tr>"
+    for fi, fund in enumerate(FUNDS):
+        m    = FUND_META[fund]
+        sig  = INST_SIGNAL.get(fund,"")
+        char = FUND_CHARACTERISTIC.get(fund,"")
+        sig_color = "#b91c1c" if "🔴" in sig else ("#b45309" if "🟡" in sig else "#15803d")
+        row_bg = "#f8fafc" if fi % 2 == 0 else "#ffffff"
+        mx += f"<tr style='background:{row_bg};border-bottom:1px solid #e2e8f0'>"
+        mx += (f"<td style='padding:10px 12px'>"
+               f"<b style='color:#0f172a;font-size:13px'>{fund}</b><br>"
+               f"<span style='font-size:11px;color:#64748b'>{m['country']} | {m['type']}</span><br>"
+               f"<span style='font-size:11px;color:#475569'>AUM: {m['aum']}</span><br>"
+               f"<span style='font-size:11px;color:{sig_color}'>{sig[:40]}</span>"
+               f"</td>")
+        # ALT_CLASSES
+        alt_sum = 0
+        for ac in ALT_CLASSES:
+            cur, pre = ALLOC[fund].get(ac,(None,None))
+            arr = delta_arrow(cur,pre)
+            d   = (cur-pre) if cur and pre else 0
+            ac_col = "#15803d" if d>0.3 else ("#b91c1c" if d<-0.3 else "#64748b")
+            cell = f"<b style='color:#1d4ed8'>{pct_badge(cur)}</b><br><span style='font-size:10px;color:{ac_col}'>{arr}</span>"
+            mx += f"<td style='padding:8px 6px;text-align:center;background:#f0f7ff'>{cell}</td>"
+            if cur: alt_sum += cur
+        # Non-alt
+        for ac in ["Public Equity","Fixed Income"]:
+            cur, pre = ALLOC[fund].get(ac,(None,None))
+            arr = delta_arrow(cur,pre)
+            d   = (cur-pre) if cur and pre else 0
+            ac_col = "#15803d" if d>0.3 else ("#b91c1c" if d<-0.3 else "#64748b")
+            cell = f"<b style='color:#334155'>{pct_badge(cur)}</b><br><span style='font-size:10px;color:{ac_col}'>{arr}</span>"
+            mx += f"<td style='padding:8px 6px;text-align:center'>{cell}</td>"
+        # Alt합계
+        alt_pre_sum = sum(ALLOC[fund][a][1] for a in ALT_CLASSES if ALLOC[fund].get(a,(None,None))[1])
+        alt_d = alt_sum - alt_pre_sum
+        alt_col = "#15803d" if alt_d>0.2 else ("#b91c1c" if alt_d<-0.2 else "#64748b")
+        alt_arr = f"{'▲+' if alt_d>0 else '▼'}{abs(alt_d):.1f}%p"
+        mx += (f"<td style='padding:8px 6px;text-align:center;background:#eff6ff'>"
+               f"<b style='font-size:15px;color:#1d4ed8'>{alt_sum:.1f}%</b><br>"
+               f"<span style='font-size:10px;color:{alt_col}'>{alt_arr}</span></td>")
+        # 기관 특징
+        mx += f"<td style='padding:8px 12px;font-size:11px;color:#475569;line-height:1.5'>{char}</td>"
+        mx += "</tr>"
 
-    is_alt = {a: (a in ALT_CLASSES) for a in ALL_CLASSES}
-    for asset in ALL_CLASSES:
-        bg = "#111827" if is_alt[asset] else "#0d1117"
-        border = "border-left:3px solid #3b82f6;" if is_alt[asset] else ""
-        header_html += f"<tr style='background:{bg};{border}'>"
-        header_html += f"<td style='padding:10px;font-weight:bold;color:#f1f5f9'>{asset}</td>"
-        for fund in FUNDS:
-            cur, pre = ALLOC[fund].get(asset, (None, None))
-            arrow    = delta_arrow(cur, pre)
-            color    = "#90caf9" if is_alt[asset] else "#e2e8f0"
-            ac       = "#81c995" if (cur and pre and cur>pre+0.4) else ("#f48fb1" if (cur and pre and cur<pre-0.4) else "#aab8c8")
-            cell = f"<b>{pct_badge(cur)}</b><br><span style='font-size:11px;color:{ac}'>{arrow}</span>"
-            header_html += f"<td style='padding:10px;text-align:center;color:{color}'>{cell}</td>"
-        summ = ASSET_SUMMARY.get(asset,"")[:60]+"…" if len(ASSET_SUMMARY.get(asset,""))>60 else ASSET_SUMMARY.get(asset,"")
-        header_html += f"<td style='padding:10px;font-size:12px;color:#8fa3b8'>{summ}</td>"
-        header_html += "</tr>"
-
-    # 대체투자 합산 행
-    header_html += "<tr style='background:#1e2a3a;border-top:2px solid #3b82f6'>"
-    header_html += "<td style='padding:10px;font-weight:bold;color:#90caf9'>대체투자 합계</td>"
-    for fund in FUNDS:
-        alt_cur = sum(ALLOC[fund][a][0] for a in ALT_CLASSES if ALLOC[fund].get(a,(None,None))[0] is not None)
-        alt_pre = sum(ALLOC[fund][a][1] for a in ALT_CLASSES if ALLOC[fund].get(a,(None,None))[1] is not None)
-        arr = delta_arrow(alt_cur, alt_pre)
-        ac  = "#81c995" if alt_cur>alt_pre+0.2 else ("#f48fb1" if alt_cur<alt_pre-0.2 else "#aab8c8")
-        header_html += f"<td style='padding:10px;text-align:center;font-weight:bold;font-size:15px;color:#1d4ed8'>{alt_cur:.1f}%<br><span style='font-size:11px;color:{ac}'>{arr}</span></td>"
-    header_html += "<td></td></tr></table>"
-
-    st.markdown(header_html, unsafe_allow_html=True)
+    mx += "</tbody></table>"
+    st.markdown(mx, unsafe_allow_html=True)
+    st.caption("※ OTPP는 레버리지 포함 이펙티브 자산믹스 기준(합계>100%). NPS 대체 세부비중은 대체투자 구성비 환산값.")
 
     # ── AI 해석 카드 ────────────────────────────────────────
     st.divider()
     st.subheader("🧠 AI 종합 해석")
-
     if st.button("AI 분석 실행", key="ai_main"):
         matrix_json = {f: {a: ALLOC[f].get(a,(None,None))[0] for a in ALT_CLASSES} for f in FUNDS}
         with st.spinner("AI 분석 중..."):
             result = ai_main_interpretation(matrix_json)
         if result:
             st.session_state["ai_main_result"] = result
-
     ai_r = st.session_state.get("ai_main_result")
     if ai_r:
         st.info(f"**📌 헤드라인:** {ai_r.get('headline','')}")
-        c1,c2 = st.columns(2)
+        c1, c2 = st.columns(2)
         with c1:
-            for k,label in [("pe_signal","Private Equity"),("credit_signal","Private Credit"),
-                            ("infra_signal","Infrastructure"),("re_signal","Real Estate")]:
+            for k, label in [("pe_signal","PE"),("credit_signal","Credit"),
+                              ("infra_signal","Infra"),("re_signal","Real Estate")]:
                 st.markdown(f"**{label}:** {ai_r.get(k,'')}")
         with c2:
             st.markdown(f"**🎯 기회:** {ai_r.get('opportunity','')}")
             st.markdown(f"**⚠️ 리스크:** {ai_r.get('risk','')}")
-            for m in ai_r.get("key_movers",[]):
-                st.markdown(f"• {m}")
     else:
-        st.caption("'AI 분석 실행' 버튼을 클릭하면 AI 종합 해석이 표시됩니다.")
+        st.caption("버튼을 클릭하면 AI 종합 해석이 표시됩니다.")
 
-    # ── 최근 이슈 코멘트 ────────────────────────────────────
+    # ── 기관별 최근 이슈 표 ─────────────────────────────────
     st.divider()
-    st.subheader("💬 최근 이슈 코멘트")
+    st.subheader("💬 기관별 최근 이슈 현황")
+    issue_rows = []
     for fund in FUNDS:
-        with st.expander(f"**{fund}**"):
-            st.write(RECENT_ISSUES[fund])
+        fund_arts = [a for a in tagged_all if fund in a.get("fund_tags",[])]
+        n_dedup   = len({a["title"] for a in fund_arts})
+        issue_rows.append({
+            "기관": fund,
+            "직접 뉴스(건)": n_dedup,
+            "최근 이슈 요약": RECENT_ISSUES.get(fund,"–")[:80]+"…" if len(RECENT_ISSUES.get(fund,""))>80 else RECENT_ISSUES.get(fund,"–"),
+            "시그널": INST_SIGNAL.get(fund,"").split("—")[0].strip() if INST_SIGNAL.get(fund) else "–",
+        })
+    df_issues = pd.DataFrame(issue_rows)
+    st.dataframe(df_issues, use_container_width=True, hide_index=True)
+
+    # ── 대체투자 자산군 이슈 ─────────────────────────────────
+    st.divider()
+    st.subheader("📌 대체투자 자산군 이슈")
+    alt_issue_cols = st.columns(len(ALT_CLASSES))
+    for ci, ac in enumerate(ALT_CLASSES):
+        with alt_issue_cols[ci]:
+            ac_arts = [a for a in tagged_all if ac in a.get("asset_tags",[])]
+            n_ac = len({a["title"] for a in ac_arts})
+            ov = ASSET_OVERVIEW.get(ac,{})
+            st.markdown(
+                f"<div style='background:#f8fafc;border:1px solid #e2e8f0;border-top:3px solid #3b82f6;"
+                f"border-radius:8px;padding:12px;height:100%'>"
+                f"<p style='font-weight:700;color:#1d4ed8;font-size:13px;margin:0 0 6px'>{ac}</p>"
+                f"<p style='font-size:11px;color:#64748b;margin:0 0 4px'>관련 뉴스: <b style='color:#1e293b'>{n_ac}건</b></p>"
+                f"<p style='font-size:11px;color:#475569;line-height:1.6;margin:0'>{ov.get('recent','–')[:100]}…</p>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
 
 # ══════════════════════════════════════════════════════════════
 # PAGE 2: 기관별 상세
@@ -787,11 +895,57 @@ elif page == "🏦 기관별 상세":
         issue  = RECENT_ISSUES[fund]
 
         with tab:
-            # 헤더
+            # ── 기관 개요 카드 ───────────────────────────────────
+            alt_cur_v  = sum(v[0] for k,v in alloc.items() if k in ALT_CLASSES and v[0])
+            last_ret_k = list(ret_ts.keys())[-1]
+            last_ret_v = ret_ts[last_ret_k]
+            core_assets = [a for a in ALT_CLASSES if alloc.get(a,(0,0))[0] and alloc[a][0] >= 5.0]
+            core_str    = " / ".join(core_assets) if core_assets else "다각화"
+            sig         = INST_SIGNAL.get(fund, "")
+            sig_color   = "#b91c1c" if "🔴" in sig else ("#b45309" if "🟡" in sig else "#15803d")
+            char        = FUND_CHARACTERISTIC.get(fund, "")
+
+            # 5년 CAGR 계산
+            ret_vals = list(ret_ts.values())
+            cagr_val = None
+            if len(ret_vals) >= 5:
+                from functools import reduce
+                product = reduce(lambda a, b: a * (1 + b/100), ret_vals[-5:], 1.0)
+                cagr_val = (product ** (1/5) - 1) * 100
+
             st.markdown(f"""
-<div class='fund-header'>
-<span style='font-size:20px;font-weight:bold;color:#334155'>{fund}</span>
-&nbsp;&nbsp;<span style='color:#64748b'>{meta['country']} | {meta['type']} | AUM {meta['aum']}</span>
+<div style='background:linear-gradient(135deg,#1e3a8a,#1d4ed8);border-radius:12px;
+            padding:20px 24px;margin-bottom:16px;color:#f1f5f9'>
+  <div style='display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px'>
+    <div>
+      <p style='font-size:22px;font-weight:800;color:#ffffff;margin:0 0 4px'>{fund}</p>
+      <p style='font-size:13px;color:#bfdbfe;margin:0'>{meta['country']} | {meta['type']}</p>
+      <p style='font-size:12px;color:#93c5fd;margin:6px 0 0'>{char}</p>
+    </div>
+    <div style='display:flex;gap:20px;flex-wrap:wrap'>
+      <div style='text-align:center'>
+        <p style='font-size:11px;color:#93c5fd;margin:0'>총 운용자산</p>
+        <p style='font-size:16px;font-weight:700;color:#ffffff;margin:2px 0'>{meta['aum']}</p>
+      </div>
+      <div style='text-align:center'>
+        <p style='font-size:11px;color:#93c5fd;margin:0'>대체투자 비중</p>
+        <p style='font-size:20px;font-weight:800;color:#fbbf24;margin:2px 0'>{alt_cur_v:.1f}%</p>
+      </div>
+      <div style='text-align:center'>
+        <p style='font-size:11px;color:#93c5fd;margin:0'>핵심 자산군</p>
+        <p style='font-size:13px;font-weight:600;color:#a5f3fc;margin:2px 0'>{core_str}</p>
+      </div>
+      <div style='text-align:center'>
+        <p style='font-size:11px;color:#93c5fd;margin:0'>최근 수익률 ({last_ret_k})</p>
+        <p style='font-size:20px;font-weight:800;color:{"#86efac" if last_ret_v>=0 else "#fca5a5"};margin:2px 0'>{last_ret_v:+.1f}%</p>
+      </div>
+      {"<div style='text-align:center'><p style='font-size:11px;color:#93c5fd;margin:0'>5년 연평균(CAGR)</p><p style='font-size:16px;font-weight:700;color:#ffffff;margin:2px 0'>"+f"{cagr_val:.1f}%"+"</p></div>" if cagr_val else ""}
+    </div>
+  </div>
+  <div style='margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.2)'>
+    <span style='font-size:12px;font-weight:700;color:{sig_color};background:rgba(255,255,255,0.1);
+                 padding:3px 10px;border-radius:12px'>{sig}</span>
+  </div>
 </div>""", unsafe_allow_html=True)
 
             # ── 연도별 자산배분 + 대체투자 변화 ─────────────────────
@@ -889,58 +1043,8 @@ elif page == "🏦 기관별 상세":
 
             st.divider()
 
-            # ── 5개년 대체투자 비중 추이 ───────────────────────────
-            st.markdown("##### 📈 대체투자 자산군 5개년 추이")
-            alloc_ts_fund = ALLOC_TS.get(fund, {})
-            if alloc_ts_fund:
-                ts_rows = []
-                for yr, yr_alloc in alloc_ts_fund.items():
-                    for ac in ALT_CLASSES:
-                        ts_rows.append({"연도": norm_year(yr), "자산군": ac, "비중(%)": yr_alloc.get(ac, 0)})
-                df_ts = pd.DataFrame(ts_rows)
-                alt_color_map = {
-                    "Private Equity":"#3b82f6","Private Credit":"#8b5cf6",
-                    "Infrastructure":"#10b981","Real Estate":"#f59e0b",
-                    "Hedge Fund/Other":"#6366f1",
-                }
-                fig_ts = px.line(df_ts, x="연도", y="비중(%)", color="자산군",
-                                 markers=True,
-                                 color_discrete_map=alt_color_map,
-                                 title=f"{fund} 대체투자 자산군별 5개년 비중 추이")
-                fig_ts.update_layout(
-                    paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
-                    font=dict(color=TICK_COLOR, size=12), legend=dict(font=dict(color=TICK_COLOR, size=11), bgcolor="rgba(0,0,0,0)"),
-                    yaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%"),
-                    xaxis=dict(gridcolor=GRID_COLOR),
-                    hovermode="x unified",
-                )
-                fig_ts.update_traces(line_width=2)
-                st.plotly_chart(fig_ts, use_container_width=True, key=f"ts_{fund}")
-
-                # 대체투자 합계 추이
-                ts_total = []
-                for yr, yr_alloc in alloc_ts_fund.items():
-                    total = sum(yr_alloc.get(ac, 0) for ac in ALT_CLASSES)
-                    ts_total.append({"연도": norm_year(yr), "대체투자 합계(%)": round(total, 1)})
-                df_total = pd.DataFrame(ts_total)
-                fig_total = px.bar(df_total, x="연도", y="대체투자 합계(%)",
-                                   text="대체투자 합계(%)",
-                                   color="대체투자 합계(%)",
-                                   color_continuous_scale=["#1e3a5f","#3b82f6","#90caf9"],
-                                   title=f"{fund} 대체투자 합계 비중 5개년 추이")
-                fig_total.update_traces(texttemplate="%{text:.1f}%", textposition="outside",
-                                        textfont=dict(color="#f1f5f9", size=13))
-                fig_total.update_layout(
-                    paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
-                    font=dict(color=TICK_COLOR, size=12), showlegend=False,
-                    yaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%",
-                               tickfont=dict(color=TICK_COLOR, size=12)),
-                    xaxis=dict(gridcolor=GRID_COLOR, tickfont=dict(color=TICK_COLOR, size=12)),
-                )
-                st.plotly_chart(fig_total, use_container_width=True, key=f"total_{fund}")
-
-            # ── 5개년 전체 자산배분 스택 바 + 리밸런싱 분석 ──────────
-            st.markdown("<p style='font-size:16px;font-weight:700;color:#1d4ed8;margin:12px 0 6px'>📊 전체 자산배분 5개년 변화</p>", unsafe_allow_html=True)
+            # ── 5개년 전체 자산배분 스택 바 (alt 라인·합계 바 통합) ───
+            st.markdown("<p style='font-size:16px;font-weight:700;color:#1d4ed8;margin:12px 0 6px'>📊 전체 자산배분 5개년 변화 (스택)</p>", unsafe_allow_html=True)
             alloc_ts_fund2 = ALLOC_TS.get(fund, {})
             if alloc_ts_fund2:
                 years2 = [norm_year(yr) for yr in alloc_ts_fund2.keys()]
@@ -1074,28 +1178,149 @@ elif page == "🏦 기관별 상세":
 
             st.divider()
 
-            # 수익률 추이 & 기관 특징
-            c3, c4 = st.columns([1.2, 1])
+            # ── 수익률·성과 추이 ─────────────────────────────────
+            st.markdown(
+                "<p style='font-size:16px;font-weight:700;color:#1d4ed8;margin:4px 0 8px'>"
+                "📈 수익률·성과 분석</p>",
+                unsafe_allow_html=True
+            )
+            c3, c4 = st.columns([1.3, 1])
 
             with c3:
-                st.markdown("##### 3~5년 수익률 추이 (%)")
-                df_ret = pd.DataFrame({"연도":list(ret_ts),"수익률(%)":list(ret_ts.values())})
-                fig_ret = px.bar(df_ret, x="연도", y="수익률(%)",
-                                 color="수익률(%)", color_continuous_scale=["#f48fb1","#94a3b8","#81c995"],
-                                 text="수익률(%)")
-                fig_ret.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
-                fig_ret.update_layout(paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
-                                      font=dict(color=TICK_COLOR, size=12),showlegend=False,
-                                      yaxis=dict(gridcolor=GRID_COLOR),
-                                      xaxis=dict(gridcolor=GRID_COLOR))
+                # 수익률 바차트 + BM 비교
+                ret_years  = list(ret_ts.keys())
+                ret_vals_l = list(ret_ts.values())
+                bm_ts_fund = BENCHMARK_TS.get(fund, {})
+
+                fig_ret = go.Figure()
+                # 수익률 바
+                bar_colors_ret = ["#15803d" if v >= 0 else "#b91c1c" for v in ret_vals_l]
+                fig_ret.add_trace(go.Bar(
+                    x=ret_years, y=ret_vals_l,
+                    name="수익률",
+                    marker_color=bar_colors_ret,
+                    text=[f"{v:+.1f}%" for v in ret_vals_l],
+                    textposition="outside",
+                    textfont=dict(color="#1e293b", size=11),
+                ))
+                # BM 라인 (있는 연도만)
+                bm_x = [yr for yr in ret_years if norm_year(yr) in {norm_year(k) for k in bm_ts_fund}]
+                bm_y_map = {norm_year(k): v for k, v in bm_ts_fund.items()}
+                bm_y = [bm_y_map.get(norm_year(yr)) for yr in bm_x if bm_y_map.get(norm_year(yr)) is not None]
+                bm_x_f = [yr for yr in bm_x if bm_y_map.get(norm_year(yr)) is not None]
+                if bm_x_f:
+                    fig_ret.add_trace(go.Scatter(
+                        x=bm_x_f, y=bm_y,
+                        name="벤치마크",
+                        mode="lines+markers",
+                        line=dict(color="#f59e0b", width=2, dash="dash"),
+                        marker=dict(size=6),
+                    ))
+                fig_ret.update_layout(
+                    title=dict(text=f"{fund} 수익률 추이 (BM 포함)", font=dict(color="#475569", size=13)),
+                    paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                    font=dict(color=TICK_COLOR, size=12),
+                    legend=dict(font=dict(color=TICK_COLOR, size=11), bgcolor="rgba(0,0,0,0)"),
+                    yaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%",
+                               tickfont=dict(color=TICK_COLOR)),
+                    xaxis=dict(gridcolor=GRID_COLOR, tickfont=dict(color=TICK_COLOR)),
+                    barmode="group",
+                )
+                fig_ret.add_hline(y=0, line_color="#94a3b8", line_width=1)
                 st.plotly_chart(fig_ret, use_container_width=True, key=f"ret_{fund}")
 
             with c4:
-                st.markdown("<p style='font-size:15px;font-weight:700;color:#1d4ed8'>기관 특징</p>", unsafe_allow_html=True)
+                # 성과 지표 + 분석 멘트
+                ret_vals_all = list(ret_ts.values())
+                avg_5 = sum(ret_vals_all[-5:]) / min(5, len(ret_vals_all)) if ret_vals_all else 0
+                best_yr  = max(ret_ts, key=ret_ts.get)
+                worst_yr = min(ret_ts, key=ret_ts.get)
+                pos_yrs  = sum(1 for v in ret_vals_all if v >= 0)
+
+                # CAGR
+                from functools import reduce as _reduce
+                cagr5 = None
+                if len(ret_vals_all) >= 5:
+                    prod = _reduce(lambda a, b: a*(1+b/100), ret_vals_all[-5:], 1.0)
+                    cagr5 = (prod**(1/5)-1)*100
+
+                # BM 초과 성과
+                bm_excess_pairs = []
+                for yr, ret_v in ret_ts.items():
+                    bm_v = bm_y_map.get(norm_year(yr))
+                    if bm_v is not None:
+                        bm_excess_pairs.append((yr, round(ret_v - bm_v, 1)))
+                avg_excess = sum(v for _,v in bm_excess_pairs)/len(bm_excess_pairs) if bm_excess_pairs else None
+
+                # 성과 카드
+                kpis = [
+                    ("5년 평균 수익률", f"{avg_5:.1f}%", "#1d4ed8"),
+                    ("5년 CAGR", f"{cagr5:.1f}%" if cagr5 else "–", "#1d4ed8"),
+                    ("최고 수익 연도", f"{best_yr} ({ret_ts[best_yr]:+.1f}%)", "#15803d"),
+                    ("최저 수익 연도", f"{worst_yr} ({ret_ts[worst_yr]:+.1f}%)", "#b91c1c"),
+                    ("BM 평균 초과", f"{avg_excess:+.1f}%p" if avg_excess is not None else "미공시", "#b45309"),
+                    ("플러스 연도 수", f"{pos_yrs}/{len(ret_vals_all)}년", "#475569"),
+                ]
+                kpi_html = "<div style='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px'>"
+                for label, val, col in kpis:
+                    kpi_html += (f"<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;"
+                                 f"padding:8px 10px'>"
+                                 f"<p style='font-size:10px;color:#64748b;margin:0'>{label}</p>"
+                                 f"<p style='font-size:14px;font-weight:700;color:{col};margin:2px 0'>{val}</p>"
+                                 f"</div>")
+                kpi_html += "</div>"
+                st.markdown(kpi_html, unsafe_allow_html=True)
+
+                # 배분-성과 연계 분석
+                alloc_ts_f = ALLOC_TS.get(fund, {})
+                last_raw  = list(alloc_ts_f.keys())[-1]  if alloc_ts_f else None
+                first_raw = list(alloc_ts_f.keys())[0]   if alloc_ts_f else None
+                alt_delta_perf = None
+                if last_raw and first_raw:
+                    a_s2 = sum(alloc_ts_f[first_raw].get(c,0) for c in ALT_CLASSES)
+                    a_e2 = sum(alloc_ts_f[last_raw].get(c,0)  for c in ALT_CLASSES)
+                    alt_delta_perf = round(a_e2 - a_s2, 1)
+
+                perf_comment = []
+                if cagr5:
+                    perf_comment.append(
+                        f"최근 5년 CAGR <b style='color:#1d4ed8'>{cagr5:.1f}%</b>로 "
+                        f"{'장기 목표 수준 충족' if cagr5 >= 7 else '목표 수익률 하회 — 포트폴리오 점검 필요'}."
+                    )
+                if alt_delta_perf is not None:
+                    direction = "확대" if alt_delta_perf > 0 else "축소"
+                    perf_comment.append(
+                        f"같은 기간 대체투자 비중 <b style='color:#{'15803d' if alt_delta_perf>0 else 'b91c1c'}'>"
+                        f"{alt_delta_perf:+.1f}%p {direction}</b> — "
+                        f"{'대체투자 확대가 안정적 초과수익 창출에 기여한 것으로 판단' if alt_delta_perf>0 else '유동성 선호 전환 또는 밸류에이션 압박에 따른 조정'}."
+                    )
+                if avg_excess is not None:
+                    perf_comment.append(
+                        f"BM 대비 평균 <b style='color:#{'15803d' if avg_excess>0 else 'b91c1c'}'>"
+                        f"{avg_excess:+.1f}%p {'초과' if avg_excess>0 else '하회'}</b> — "
+                        f"{'액티브 운용 역량 확인' if avg_excess>0 else '패시브 대비 추가 비용·리스크 검토 필요'}."
+                    )
+
+                if perf_comment:
+                    st.markdown(
+                        "<div style='background:#f0f7ff;border-left:4px solid #3b82f6;"
+                        "border-radius:0 8px 8px 0;padding:12px 14px;font-size:13px;"
+                        "color:#1e293b;line-height:1.8'>"
+                        "<p style='font-weight:700;color:#1d4ed8;margin:0 0 6px'>📌 배분-성과 연계 분석</p>"
+                        + "<br>".join(perf_comment) +
+                        "</div>",
+                        unsafe_allow_html=True
+                    )
+
+            st.divider()
+            # 기관 특징 & 이슈 (간소화)
+            c5, c6 = st.columns(2)
+            with c5:
+                st.markdown("<p style='font-size:14px;font-weight:700;color:#1d4ed8'>기관 특징 & 운용 방향</p>", unsafe_allow_html=True)
                 st.markdown(f"<p style='font-size:13px;color:#334155;line-height:1.7'>{meta['description']}</p>", unsafe_allow_html=True)
-                st.markdown("<p style='font-size:15px;font-weight:700;color:#1d4ed8;margin-top:12px'>최근 운용 방향</p>", unsafe_allow_html=True)
-                st.markdown(f"<p style='font-size:13px;color:#334155;line-height:1.7'>{meta['strategy']}</p>", unsafe_allow_html=True)
-                st.markdown("<p style='font-size:15px;font-weight:700;color:#b45309;margin-top:12px'>⚡ 최근 이슈</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='font-size:13px;color:#475569;line-height:1.7;margin-top:8px'>{meta['strategy']}</p>", unsafe_allow_html=True)
+            with c6:
+                st.markdown("<p style='font-size:14px;font-weight:700;color:#b45309'>⚡ 최근 이슈</p>", unsafe_allow_html=True)
                 st.markdown(f"<div style='background:#fffbeb;border-left:3px solid #f59e0b;border-radius:4px;padding:10px 14px;font-size:13px;color:#78350f;line-height:1.7'>{issue}</div>", unsafe_allow_html=True)
 
             # AI 상세 분석
@@ -1132,11 +1357,8 @@ elif page == "🏦 기관별 상세":
 elif page == "📊 자산군별 비교":
     st.title("📊 자산군별 비교")
 
-    # 전체 연도 목록 (모든 기관 ALLOC_TS 합집합, 정규화)
     all_ts_years = sorted(set(
-        norm_year(yr)
-        for f in FUNDS
-        for yr in ALLOC_TS.get(f, {}).keys()
+        norm_year(yr) for f in FUNDS for yr in ALLOC_TS.get(f, {}).keys()
     ), key=lambda x: int(x))
 
     fund_color_map = {
@@ -1148,9 +1370,33 @@ elif page == "📊 자산군별 비교":
 
     for tab_idx, tab in enumerate(asset_tabs):
         asset = ALT_CLASSES[tab_idx]
+        ov = ASSET_OVERVIEW.get(asset, {})
 
         with tab:
-            # ── 연도 탭 ──────────────────────────────────────────
+            # ── (1) 자산군 개요 ────────────────────────────────
+            st.markdown(
+                f"<div style='background:#f0f7ff;border-left:4px solid #3b82f6;"
+                f"border-radius:0 8px 8px 0;padding:14px 18px;margin-bottom:16px'>"
+                f"<p style='font-size:15px;font-weight:700;color:#1d4ed8;margin:0 0 8px'>{asset} 개요</p>"
+                f"<p style='font-size:13px;color:#334155;margin:0 0 6px'>{ov.get('overview','')}</p>"
+                f"<div style='display:flex;gap:16px;margin-top:10px;flex-wrap:wrap'>"
+                f"<div style='flex:1;min-width:200px'>"
+                f"<p style='font-size:11px;font-weight:700;color:#15803d;margin:0 0 3px'>✅ 투자 매력</p>"
+                f"<p style='font-size:12px;color:#1e293b;line-height:1.6;margin:0'>{ov.get('attraction','')}</p>"
+                f"</div>"
+                f"<div style='flex:1;min-width:200px'>"
+                f"<p style='font-size:11px;font-weight:700;color:#b91c1c;margin:0 0 3px'>⚠️ 주요 리스크</p>"
+                f"<p style='font-size:12px;color:#1e293b;line-height:1.6;margin:0'>{ov.get('risk','')}</p>"
+                f"</div>"
+                f"<div style='flex:1;min-width:200px'>"
+                f"<p style='font-size:11px;font-weight:700;color:#b45309;margin:0 0 3px'>🔔 최근 이슈</p>"
+                f"<p style='font-size:12px;color:#1e293b;line-height:1.6;margin:0'>{ov.get('recent','')}</p>"
+                f"</div>"
+                f"</div></div>",
+                unsafe_allow_html=True
+            )
+
+            # ── (2) 연도별 기관 비중 비교 ──────────────────────
             st.markdown(
                 "<p style='font-size:15px;font-weight:700;color:#1d4ed8;margin:4px 0 8px'>"
                 "📅 연도별 기관 비중 비교</p>",
@@ -1161,124 +1407,69 @@ elif page == "📊 자산군별 비교":
             for yi, yr_tab in enumerate(yr_tabs):
                 sel_yr = all_ts_years[yi]
                 with yr_tab:
-                    # 해당 연도 데이터 수집
                     yr_rows = []
                     for fund in FUNDS:
-                        yr_alloc_map = {norm_year(k): v for k, v in ALLOC_TS.get(fund, {}).items()}
-                        cur = yr_alloc_map.get(sel_yr, {}).get(asset)
+                        yr_map = {norm_year(k): v for k, v in ALLOC_TS.get(fund, {}).items()}
+                        cur = yr_map.get(sel_yr, {}).get(asset)
                         pre_yr = str(int(sel_yr) - 1)
-                        pre = yr_alloc_map.get(pre_yr, {}).get(asset)
+                        pre = yr_map.get(pre_yr, {}).get(asset)
                         delta = round(cur - pre, 1) if (cur is not None and pre is not None) else None
-                        yr_rows.append({"기관": fund, "비중": cur, "전기": pre, "증감(pp)": delta})
+                        yr_rows.append({
+                            "기관": fund,
+                            "비중(%)": cur,
+                            "전기(%)": pre,
+                            "증감(pp)": delta,
+                            "기관 특징": FUND_CHARACTERISTIC.get(fund,""),
+                        })
 
                     df_yr = pd.DataFrame(yr_rows)
-                    df_yr_valid = df_yr.dropna(subset=["비중"]).sort_values("비중", ascending=False).copy()
-                    df_yr_valid["순위"] = range(1, len(df_yr_valid) + 1)
+                    df_yr_v = df_yr.dropna(subset=["비중(%)"]).sort_values("비중(%)", ascending=False).copy()
+                    df_yr_v["순위"] = range(1, len(df_yr_v)+1)
 
-                    if df_yr_valid.empty:
-                        st.caption(f"{sel_yr}년 데이터가 없는 기관이 있습니다.")
-                    else:
-                        c1, c2 = st.columns([1, 1.4])
+                    if df_yr_v.empty:
+                        st.caption(f"{sel_yr}년 데이터 없음")
+                        continue
 
-                        with c1:
-                            st.markdown(
-                                f"<p style='font-size:14px;font-weight:700;color:#1e293b;margin:0 0 8px'>"
-                                f"{asset} – {sel_yr}년 기관별 비중 순위</p>",
-                                unsafe_allow_html=True
-                            )
-                            for _, row in df_yr_valid.iterrows():
-                                cur_v = row["비중"]
-                                d = row["증감(pp)"]
-                                d_valid = d is not None and not (isinstance(d, float) and np.isnan(d))
-                                d_col = "#15803d" if (d_valid and d > 0) else ("#b91c1c" if (d_valid and d < 0) else "#64748b")
-                                d_sign = "▲ +" if (d_valid and d > 0) else ("▼ " if (d_valid and d < 0) else "→ ")
-                                d_txt = f"<span style='color:{d_col};font-weight:600;font-size:12px'>{d_sign}{abs(d):.1f}%p</span>" if d_valid else ""
-                                pre_note = f"<span style='font-size:11px;color:#94a3b8'>(전기 {row['전기']:.1f}%)</span>" if (d_valid and row['전기'] is not None) else ""
-                                rh = (
-                                    f"<div style='display:flex;justify-content:space-between;align-items:center;"
-                                    f"padding:6px 0;border-bottom:1px solid #e2e8f0'>"
-                                    f"<span style='color:#64748b;font-size:12px;min-width:26px'>"
-                                    f"<b style='color:#1e293b'>{int(row['순위'])}</b>위</span>"
-                                    f"<span style='flex:1;padding:0 6px;font-size:13px;font-weight:600;color:#1e293b'>{row['기관']}</span>"
-                                    f"<span style='font-size:15px;font-weight:700;color:#1d4ed8'>{cur_v:.1f}%</span>"
-                                    f"&nbsp;{d_txt}</div>"
-                                )
-                                st.markdown(rh, unsafe_allow_html=True)
+                    # 통합 순위표 + 기관 특징
+                    tbl = ("<table style='width:100%;border-collapse:collapse;font-size:13px'>"
+                           "<thead><tr style='background:#f8fafc;border-bottom:2px solid #e2e8f0'>"
+                           "<th style='padding:8px 10px;color:#64748b;text-align:center;width:36px'>#</th>"
+                           "<th style='padding:8px 10px;color:#1e293b;text-align:left'>기관</th>"
+                           f"<th style='padding:8px 10px;color:#1d4ed8;text-align:right'>{sel_yr}년 비중</th>"
+                           "<th style='padding:8px 10px;color:#64748b;text-align:right'>전기 비중</th>"
+                           "<th style='padding:8px 10px;color:#64748b;text-align:right'>증감</th>"
+                           "<th style='padding:8px 10px;color:#475569;text-align:left'>기관 특징</th>"
+                           "</tr></thead><tbody>")
 
-                        with c2:
-                            bar_colors = [
-                                "#15803d" if (r["증감(pp)"] is not None and r["증감(pp)"] > 0.2)
-                                else ("#b91c1c" if (r["증감(pp)"] is not None and r["증감(pp)"] < -0.2)
-                                else "#64748b")
-                                for _, r in df_yr_valid.iterrows()
-                            ]
-                            fig_yr = go.Figure(go.Bar(
-                                x=df_yr_valid["비중"],
-                                y=df_yr_valid["기관"],
-                                orientation="h",
-                                marker_color=bar_colors,
-                                text=[f"{v:.1f}%" for v in df_yr_valid["비중"]],
-                                textposition="outside",
-                                textfont=dict(color="#1e293b", size=12),
-                                cliponaxis=False,
-                            ))
-                            fig_yr.update_layout(
-                                title=dict(text=f"{asset} 비중 – {sel_yr}년",
-                                           font=dict(color="#1e293b", size=13)),
-                                paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
-                                font=dict(color=TICK_COLOR, size=12),
-                                xaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%",
-                                           range=[0, df_yr_valid["비중"].max() * 1.4],
-                                           tickfont=dict(color=TICK_COLOR)),
-                                yaxis=dict(tickfont=dict(color=TICK_COLOR, size=12)),
-                                margin=dict(l=0, r=60, t=36, b=10),
-                                height=280, showlegend=False,
-                            )
-                            st.plotly_chart(fig_yr, use_container_width=True,
-                                            key=f"bar_{asset}_{sel_yr}")
-
-                        # 전기 대비 증감 차트 (해당 연도 전용)
-                        df_delta_yr = df_yr_valid.dropna(subset=["증감(pp)"]).copy()
-                        if not df_delta_yr.empty:
-                            st.markdown(
-                                f"<p style='font-size:14px;font-weight:700;color:#1e293b;margin:14px 0 4px'>"
-                                f"{int(sel_yr)-1} → {sel_yr} 전기 대비 증감</p>",
-                                unsafe_allow_html=True
-                            )
-                            bar_d_colors = [
-                                "#15803d" if v > 0 else ("#b91c1c" if v < 0 else "#64748b")
-                                for v in df_delta_yr["증감(pp)"]
-                            ]
-                            fig_d = go.Figure(go.Bar(
-                                x=df_delta_yr["기관"],
-                                y=df_delta_yr["증감(pp)"],
-                                marker_color=bar_d_colors,
-                                text=[f"{v:+.1f}pp" for v in df_delta_yr["증감(pp)"]],
-                                textposition="outside",
-                                textfont=dict(color="#1e293b", size=12),
-                            ))
-                            max_abs = df_delta_yr["증감(pp)"].abs().max()
-                            fig_d.update_layout(
-                                paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
-                                font=dict(color=TICK_COLOR, size=12),
-                                xaxis=dict(tickfont=dict(color=TICK_COLOR, size=11)),
-                                yaxis=dict(gridcolor=GRID_COLOR,
-                                           ticksuffix="pp",
-                                           tickfont=dict(color=TICK_COLOR),
-                                           range=[-(max_abs*1.5+0.5), max_abs*1.5+0.5]),
-                                margin=dict(l=0, r=20, t=10, b=10),
-                                height=240, showlegend=False,
-                            )
-                            fig_d.add_hline(y=0, line_color="#94a3b8", line_width=1)
-                            st.plotly_chart(fig_d, use_container_width=True,
-                                            key=f"delta_{asset}_{sel_yr}")
+                    for _, row in df_yr_v.iterrows():
+                        d = row["증감(pp)"]
+                        d_valid = d is not None and d == d
+                        d_col = "#15803d" if (d_valid and d>0) else ("#b91c1c" if (d_valid and d<0) else "#64748b")
+                        d_str = f"{'▲+' if d>0 else '▼'}{abs(d):.1f}pp" if d_valid else "–"
+                        pre_str = f"{row['전기(%)']:.1f}%" if row['전기(%)'] == row['전기(%)'] else "–"
+                        bg = "#f0f7ff" if _ % 2 == 0 else "#ffffff"
+                        fund_color = fund_color_map.get(row['기관'], '#64748b')
+                        tbl += (f"<tr style='background:{bg};border-bottom:1px solid #f1f5f9'>"
+                                f"<td style='padding:8px 10px;text-align:center;font-weight:700;color:#94a3b8'>{int(row['순위'])}</td>"
+                                f"<td style='padding:8px 10px;font-weight:600;color:#1e293b'>"
+                                f"<span style='display:inline-block;width:10px;height:10px;border-radius:50%;"
+                                f"background:{fund_color};margin-right:6px'></span>{row['기관']}</td>"
+                                f"<td style='padding:8px 10px;text-align:right;font-size:15px;font-weight:700;color:#1d4ed8'>{row['비중(%)']:.1f}%</td>"
+                                f"<td style='padding:8px 10px;text-align:right;color:#64748b'>{pre_str}</td>"
+                                f"<td style='padding:8px 10px;text-align:right;font-weight:600;color:{d_col}'>{d_str}</td>"
+                                f"<td style='padding:8px 10px;font-size:11px;color:#475569;line-height:1.5'>{row['기관 특징'][:60]}…</td>"
+                                f"</tr>")
+                    tbl += "</tbody></table>"
+                    st.markdown(tbl, unsafe_allow_html=True)
 
             st.divider()
 
-            # ── 5개년 추이 라인 차트 ───────────────────────────────
+            # ── (3) 연도별 비중 요약표 (히트맵) ───────────────────
             st.markdown(
                 f"<p style='font-size:15px;font-weight:700;color:#1d4ed8;margin:4px 0 8px'>"
-                f"📈 {asset} – 기관별 5개년 비중 추이</p>",
+                f"📋 {asset} 연도별 비중 요약표</p>"
+                f"<p style='font-size:12px;color:#64748b;margin:0 0 10px'>"
+                f"셀 색상이 짙을수록 비중 높음 | 행=기관, 열=연도</p>",
                 unsafe_allow_html=True
             )
             ts5_rows = []
@@ -1287,76 +1478,94 @@ elif page == "📊 자산군별 비교":
                     val = yr_alloc.get(asset)
                     if val is not None:
                         ts5_rows.append({"연도": norm_year(yr), "기관": f, "비중(%)": val})
+
             if ts5_rows:
                 df_ts5 = pd.DataFrame(ts5_rows)
-                fig_ts5 = px.line(df_ts5, x="연도", y="비중(%)", color="기관",
-                                  markers=True, color_discrete_map=fund_color_map,
-                                  title=f"{asset} 기관별 비중 변화 추이")
-                fig_ts5.update_layout(
-                    paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
-                    font=dict(color=TICK_COLOR, size=12),
-                    legend=dict(font=dict(color=TICK_COLOR, size=11), bgcolor="rgba(0,0,0,0)"),
-                    yaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%",
-                               tickfont=dict(color=TICK_COLOR)),
-                    xaxis=dict(gridcolor=GRID_COLOR, tickfont=dict(color=TICK_COLOR, size=12)),
-                    hovermode="x unified",
-                )
-                fig_ts5.update_traces(line_width=2.5)
-                st.plotly_chart(fig_ts5, use_container_width=True, key=f"ts5_{asset}")
-
-                # 히트맵
                 df_pivot = df_ts5.pivot(index="기관", columns="연도", values="비중(%)")
                 df_pivot = df_pivot.reindex([f for f in FUNDS if f in df_pivot.index])
                 sorted_cols = sorted(df_pivot.columns, key=lambda x: int(x))
                 df_pivot = df_pivot[sorted_cols]
-                st.markdown(
-                    "<p style='font-size:14px;font-weight:700;color:#1d4ed8;margin:14px 0 4px'>"
-                    "📋 연도별 비중 요약표 "
-                    "<span style='font-size:11px;font-weight:400;color:#64748b'>"
-                    "— 색이 짙을수록 비중 높음 / 행=기관, 열=연도</span></p>",
-                    unsafe_allow_html=True
-                )
+
                 fig_heat = go.Figure(go.Heatmap(
                     z=df_pivot.values.tolist(),
                     x=list(df_pivot.columns),
                     y=list(df_pivot.index),
                     colorscale=[[0,"#f0f7ff"],[0.5,"#3b82f6"],[1,"#1e3a8a"]],
-                    text=[[f"{v:.1f}%" if (v==v) else "–" for v in row]
-                          for row in df_pivot.values],
+                    text=[[f"{v:.1f}%" if (v==v) else "–" for v in row] for row in df_pivot.values],
                     texttemplate="%{text}",
                     textfont=dict(size=12, color="#1e293b"),
                     showscale=True,
-                    colorbar=dict(
-                        title=dict(text="%", font=dict(color=TICK_COLOR)),
-                        tickfont=dict(color=TICK_COLOR), thickness=12, len=0.8,
-                    ),
+                    colorbar=dict(title=dict(text="%", font=dict(color=TICK_COLOR)),
+                                  tickfont=dict(color=TICK_COLOR), thickness=12, len=0.8),
                     hovertemplate="<b>%{y}</b><br>%{x}년<br>비중: <b>%{text}</b><extra></extra>",
                 ))
                 fig_heat.update_layout(
                     paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
-                    font=dict(color=TICK_COLOR, size=12), height=240,
+                    font=dict(color=TICK_COLOR, size=12), height=250,
                     margin=dict(l=0, r=60, t=30, b=10),
                     xaxis=dict(side="top", tickfont=dict(color=TICK_COLOR, size=12)),
                     yaxis=dict(tickfont=dict(color=TICK_COLOR, size=12)),
                 )
                 st.plotly_chart(fig_heat, use_container_width=True, key=f"heat_{asset}")
 
+                # 히트맵 코멘트
+                # 최다 비중 기관 & 최근 변화 큰 기관 자동 분석
+                if not df_pivot.empty:
+                    last_col = sorted_cols[-1]
+                    prev_col = sorted_cols[-2] if len(sorted_cols) > 1 else None
+                    max_fund = df_pivot[last_col].idxmax() if last_col in df_pivot.columns else "–"
+                    max_val  = df_pivot[last_col].max() if last_col in df_pivot.columns else 0
+                    comment_parts = [
+                        f"<b style='color:#1d4ed8'>{last_col}년 기준</b> 최고 비중 기관은 "
+                        f"<b>{max_fund}</b> ({max_val:.1f}%)."
+                    ]
+                    if prev_col:
+                        chg_series = df_pivot[last_col] - df_pivot[prev_col]
+                        chg_series = chg_series.dropna()
+                        if not chg_series.empty:
+                            inc_fund = chg_series.idxmax()
+                            dec_fund = chg_series.idxmin()
+                            inc_val  = chg_series.max()
+                            dec_val  = chg_series.min()
+                            if inc_val > 0.1:
+                                comment_parts.append(
+                                    f"전기 대비 가장 크게 <b style='color:#15803d'>확대</b>한 기관: "
+                                    f"<b>{inc_fund}</b> (+{inc_val:.1f}%p)."
+                                )
+                            if dec_val < -0.1:
+                                comment_parts.append(
+                                    f"가장 크게 <b style='color:#b91c1c'>축소</b>한 기관: "
+                                    f"<b>{dec_fund}</b> ({dec_val:.1f}%p)."
+                                )
+                    st.markdown(
+                        f"<div style='background:#f8fafc;border-left:3px solid #3b82f6;"
+                        f"border-radius:0 6px 6px 0;padding:10px 14px;margin-top:8px;"
+                        f"font-size:13px;color:#334155;line-height:1.7'>"
+                        + " ".join(comment_parts) + "</div>",
+                        unsafe_allow_html=True
+                    )
+
             st.divider()
 
-            # ── 자산군 특징 & 전략 방향 ────────────────────────────
-            c3, c4 = st.columns(2)
+            # ── (4) 자산군 특징 & 전략 방향 ────────────────────────
+            c3, c4 = st.columns([1, 1])
             with c3:
                 st.markdown("##### 자산군 특징")
-                st.info(ASSET_SUMMARY.get(asset,""))
+                st.info(ASSET_SUMMARY.get(asset, ""))
             with c4:
-                st.markdown("##### 기관별 현재 전략 방향 (최신 기준)")
+                st.markdown("##### 기관별 현재 전략 방향")
                 for fund in FUNDS:
                     cur_v, pre_v = ALLOC[fund].get(asset,(None,None))
                     d = (cur_v - pre_v) if cur_v and pre_v else 0
                     direction = "📈 확대" if d > 0.5 else ("📉 축소" if d < -0.5 else "➡ 유지")
-                    st.markdown(f"**{fund}**: {pct_badge(cur_v)} {direction}")
+                    char = FUND_CHARACTERISTIC.get(fund,"")[:50]
+                    st.markdown(
+                        f"**{fund}**: {pct_badge(cur_v)} {direction}  "
+                        f"<span style='font-size:11px;color:#64748b'>— {char}</span>",
+                        unsafe_allow_html=True
+                    )
 
-            # ── AI 분석 ────────────────────────────────────────────
+            # ── (5) AI 분석 ──────────────────────────────────────
             st.divider()
             if st.button("🧠 AI 자산군 비교 분석", key=f"ai_asset_btn_{asset}"):
                 data = {f: ALLOC[f].get(asset,(None,None)) for f in FUNDS}
@@ -1384,10 +1593,6 @@ elif page == "📊 자산군별 비교":
                 st.success(f"🎯 **기회:** {ai_ar.get('opportunity','')}")
                 st.warning(f"⚠️ **주의:** {ai_ar.get('caution','')}")
 
-
-# ══════════════════════════════════════════════════════════════
-# PAGE 4: News · Issues · Deals
-# ══════════════════════════════════════════════════════════════
 
 elif page == "📰 News · Issues · Deals":
     st.title("📰 News · Issues · Deals")
