@@ -414,19 +414,43 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS
+# CSS  ── 다크 테마 전체 적용
 st.markdown("""
 <style>
+/* ════════════════════════════════
+   전체 앱 다크 배경
+════════════════════════════════ */
+.stApp, [data-testid="stAppViewContainer"] {
+    background-color: #0d1117 !important;
+}
+[data-testid="stAppViewBlockContainer"] {
+    background-color: #0d1117 !important;
+}
+/* 메인 컨텐츠 영역 텍스트 */
+.stApp, .stApp * {
+    color: #e2e8f0;
+}
+/* 헤딩 */
+h1, h2, h3 { color: #f1f5f9 !important; font-weight: 700 !important; }
+h4, h5     { color: #93c5fd !important; font-weight: 700 !important; }
+
 /* ── 사이드바 ── */
-[data-testid="stSidebar"] { background-color: #0f1923; }
+[data-testid="stSidebar"],
+[data-testid="stSidebarContent"] {
+    background-color: #0b1220 !important;
+}
 [data-testid="stSidebar"] * { color: #dce6f0 !important; }
 
 /* ── 탭 ── */
+[data-testid="stTabs"] {
+    background-color: transparent !important;
+}
 [data-testid="stTabs"] button {
     font-size: 13px !important;
     font-weight: 600 !important;
     padding: 6px 16px !important;
     color: #64748b !important;
+    background: transparent !important;
 }
 [data-testid="stTabs"] button[aria-selected="true"] {
     color: #60a5fa !important;
@@ -440,10 +464,10 @@ st.markdown("""
     padding: 14px 16px;
     border-left: 4px solid #3b82f6;
     margin-bottom: 8px;
-    color: #cbd5e1;
+    color: #cbd5e1 !important;
     line-height: 1.8;
 }
-.metric-card b { color: #f1f5f9; }
+.metric-card b { color: #f1f5f9 !important; }
 
 /* ── 기관 헤더 배너 ── */
 .fund-header {
@@ -455,27 +479,36 @@ st.markdown("""
 }
 
 /* ── 뱃지 ── */
-.badge-alt       { background:#1e3a5f; color:#93c5fd; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-.badge-fund      { background:#14532d; color:#86efac; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-.badge-risk-red  { background:#450a0a; color:#fca5a5; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-.badge-risk-yel  { background:#422006; color:#fde68a; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
-.badge-risk-grn  { background:#14532d; color:#86efac; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+.badge-alt       { background:#1e3a5f; color:#93c5fd !important; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+.badge-fund      { background:#14532d; color:#86efac !important; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+.badge-risk-red  { background:#450a0a; color:#fca5a5 !important; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+.badge-risk-yel  { background:#422006; color:#fde68a !important; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
+.badge-risk-grn  { background:#14532d; color:#86efac !important; padding:3px 9px; border-radius:5px; font-size:12px; font-weight:600; }
 
 /* ── 구분선 ── */
 hr { border-color: #334155 !important; margin: 20px 0 !important; }
 
-/* ── 일반 텍스트 진하게 ── */
-p, li, span, td, th, label { color: #e2e8f0 !important; }
-h1, h2, h3, h4, h5, h6    { color: #f1f5f9 !important; }
-.stMarkdown p  { color: #e2e8f0 !important; font-size: 14px; }
-.stCaption     { color: #94a3b8 !important; font-size: 12px; }
+/* ── Streamlit 위젯 다크 처리 ── */
+[data-testid="stSelectbox"] > div,
+[data-testid="stMultiSelect"] > div,
+[data-testid="stTextInput"] > div {
+    background-color: #1a2535 !important;
+    color: #e2e8f0 !important;
+}
+/* expander */
+[data-testid="stExpander"] {
+    background-color: #141e2e !important;
+    border: 1px solid #1e3a5f !important;
+}
+/* info / warning / success 박스 */
+[data-testid="stInfo"]    { background-color: #0c2a4a !important; }
+[data-testid="stWarning"] { background-color: #2a1f00 !important; }
+[data-testid="stSuccess"] { background-color: #0a2a1a !important; }
 
-/* ── Streamlit 기본 위젯 텍스트 ── */
-[data-testid="stMetricLabel"]  { color: #cbd5e1 !important; }
-[data-testid="stMetricValue"]  { color: #f1f5f9 !important; font-weight:700 !important; }
-
-/* ── 섹션 헤더 h5 ── */
-h5 { color: #93c5fd !important; font-size:16px !important; font-weight:700 !important; }
+/* ── 캡션 ── */
+.stCaption, [data-testid="stCaptionContainer"] {
+    color: #64748b !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
