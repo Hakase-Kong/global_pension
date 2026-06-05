@@ -654,52 +654,69 @@ elif page == "🏦 기관별 상세":
 &nbsp;&nbsp;<span style='color:#94a3b8'>{meta['country']} | {meta['type']} | AUM {meta['aum']}</span>
 </div>""", unsafe_allow_html=True)
 
-            c1, c2 = st.columns([1.2, 1])
+            # ── 자산배분 가로 막대차트 + 대체투자 카드 ─────────────
+            asset_color_map = {
+                "Private Equity":"#3b82f6","Private Credit":"#8b5cf6",
+                "Infrastructure":"#10b981","Real Estate":"#f59e0b",
+                "Hedge Fund/Other":"#6366f1","Public Equity":"#475569","Fixed Income":"#64748b",
+            }
+
+            c1, c2 = st.columns([1.4, 1])
 
             with c1:
-                # 자산배분 도넛
-                cur_alloc = {a: v[0] for a,v in alloc.items() if v[0] and v[0]>0}
-                df_pie = pd.DataFrame({"자산군":list(cur_alloc),"비중":list(cur_alloc.values())})
-                color_map = {
-                    "Private Equity":"#3b82f6","Private Credit":"#8b5cf6",
-                    "Infrastructure":"#10b981","Real Estate":"#f59e0b",
-                    "Hedge Fund/Other":"#6366f1","Public Equity":"#64748b","Fixed Income":"#94a3b8",
-                }
-                fig_pie = px.pie(df_pie, values="비중", names="자산군",
-                                 title=f"{fund} 자산배분 (최신)",
-                                 color="자산군", color_discrete_map=color_map,
-                                 hole=0.45)
-                fig_pie.update_traces(
-                    textinfo="none",
-                    hovertemplate="<b>%{label}</b><br>%{value:.1f}%<extra></extra>",
-                )
-                fig_pie.update_layout(
-                    paper_bgcolor="#0d1117", plot_bgcolor="#0d1117",
+                # 전체 자산배분 가로 막대차트
+                all_alloc_items = [(a, alloc.get(a,(0,0))) for a in ALL_CLASSES]
+                bar_labels = [a for a,_ in all_alloc_items]
+                bar_values = [v[0] if v[0] else 0 for _,v in all_alloc_items]
+                bar_colors = [asset_color_map.get(a,"#64748b") for a in bar_labels]
+                fig_bar = go.Figure(go.Bar(
+                    y=bar_labels, x=bar_values,
+                    orientation="h",
+                    marker_color=bar_colors,
+                    text=[f"{v:.1f}%" for v in bar_values],
+                    textposition="outside",
+                    textfont=dict(size=13, color="#e2e8f0"),
+                    cliponaxis=False,
+                ))
+                fig_bar.update_layout(
+                    title=dict(text=f"{fund} 현재 자산배분", font_size=14, font_color="#94a3b8"),
+                    paper_bgcolor="#0d1117", plot_bgcolor="#141e2e",
                     font_color="#e2e8f0",
-                    legend=dict(
-                        orientation="v", yanchor="middle", y=0.5,
-                        xanchor="left", x=1.02, font_size=11,
-                        bgcolor="rgba(0,0,0,0)",
-                    ),
-                    title_font_size=14,
-                    margin=dict(l=0, r=120, t=40, b=0),
-                    height=280,
+                    xaxis=dict(gridcolor="#1e293b", ticksuffix="%", range=[0, max(bar_values)*1.3],
+                               tickfont_size=11),
+                    yaxis=dict(tickfont_size=13, categoryorder="array",
+                               categoryarray=list(reversed(bar_labels))),
+                    margin=dict(l=0, r=60, t=40, b=10),
+                    height=300,
+                    showlegend=False,
                 )
-                st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{fund}")
+                st.plotly_chart(fig_bar, use_container_width=True, key=f"hbar_{fund}")
 
             with c2:
-                # 대체투자 전기 대비 변화
-                st.markdown("##### 대체투자 비중 변화 (전기 대비)")
+                # 대체투자 전기 대비 카드
+                st.markdown("<p style='font-size:15px;font-weight:700;color:#90caf9;margin-bottom:12px'>대체투자 비중 변화 (전기 대비)</p>", unsafe_allow_html=True)
                 for a in ALT_CLASSES:
                     cur, pre = alloc.get(a,(None,None))
                     if cur is None: continue
                     d = (cur - pre) if pre else 0
-                    color = "#81c995" if d>0.2 else ("#f48fb1" if d<-0.2 else "#94a3b8")
-                    st.markdown(
-                        f"**{a}** &nbsp; `{pct_badge(cur)}` "
-                        f"<span style='color:{color}'>{delta_arrow(cur,pre)}</span>",
-                        unsafe_allow_html=True)
-                    st.progress(min(int(cur)/30, 1.0))
+                    delta_color_val = "#4ade80" if d>0.2 else ("#f87171" if d<-0.2 else "#94a3b8")
+                    delta_icon = "▲" if d>0.2 else ("▼" if d<-0.2 else "→")
+                    delta_str = f"{delta_icon} {abs(d):.1f}%p"
+                    bar_pct   = min(cur / 30 * 100, 100)
+                    ac_color  = asset_color_map.get(a, "#64748b")
+                    st.markdown(f"""
+<div style='margin-bottom:14px'>
+  <div style='display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px'>
+    <span style='font-size:13px;font-weight:600;color:#c9d6e3'>{a}</span>
+    <span>
+      <span style='font-size:16px;font-weight:700;color:#f0f4f8'>{cur:.1f}%</span>
+      &nbsp;<span style='font-size:12px;color:{delta_color_val};font-weight:600'>{delta_str}</span>
+    </span>
+  </div>
+  <div style='background:#1e293b;border-radius:4px;height:8px;overflow:hidden'>
+    <div style='background:{ac_color};width:{bar_pct:.1f}%;height:100%;border-radius:4px'></div>
+  </div>
+</div>""", unsafe_allow_html=True)
 
             st.divider()
 
@@ -751,46 +768,41 @@ elif page == "🏦 기관별 상세":
                 )
                 st.plotly_chart(fig_total, use_container_width=True, key=f"total_{fund}")
 
-            # ── 5개년 전체 자산배분 파이차트 ─────────────────────────
-            st.markdown("##### 🥧 전체 자산배분 5개년 변화")
+            # ── 5개년 전체 자산배분 스택 바 ──────────────────────────
+            st.markdown("<p style='font-size:15px;font-weight:700;color:#90caf9;margin:8px 0 4px'>📊 전체 자산배분 5개년 변화</p>", unsafe_allow_html=True)
             alloc_ts_fund2 = ALLOC_TS.get(fund, {})
             if alloc_ts_fund2:
-                years = list(alloc_ts_fund2.keys())
-                pie_color_map = {
+                years2 = list(alloc_ts_fund2.keys())
+                all_cls_order = ["Fixed Income","Public Equity","Hedge Fund/Other",
+                                 "Real Estate","Infrastructure","Private Credit","Private Equity"]
+                stk_color = {
                     "Private Equity":"#3b82f6","Private Credit":"#8b5cf6",
                     "Infrastructure":"#10b981","Real Estate":"#f59e0b",
-                    "Hedge Fund/Other":"#6366f1","Public Equity":"#64748b","Fixed Income":"#94a3b8",
+                    "Hedge Fund/Other":"#6366f1","Public Equity":"#475569","Fixed Income":"#374151",
                 }
-                fig_pies = make_subplots(
-                    rows=1, cols=len(years),
-                    specs=[[{"type":"pie"}]*len(years)],
-                    subplot_titles=years,
+                fig_stk = go.Figure()
+                for cls in all_cls_order:
+                    vals = [alloc_ts_fund2[yr].get(cls, 0) for yr in years2]
+                    fig_stk.add_trace(go.Bar(
+                        name=cls, x=years2, y=vals,
+                        marker_color=stk_color.get(cls,"#64748b"),
+                        hovertemplate=f"<b>{cls}</b><br>%{{y:.1f}}%<extra></extra>",
+                        text=[f"{v:.0f}" for v in vals],
+                        textposition="inside", textfont_size=10,
+                    ))
+                fig_stk.update_layout(
+                    barmode="stack",
+                    paper_bgcolor="#0d1117", plot_bgcolor="#141e2e",
+                    font_color="#e2e8f0",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                                xanchor="right", x=1, font_size=11,
+                                bgcolor="rgba(0,0,0,0)"),
+                    yaxis=dict(gridcolor="#1e293b", ticksuffix="%", tickfont_size=11),
+                    xaxis=dict(tickfont_size=12),
+                    margin=dict(l=0, r=0, t=10, b=0),
+                    height=300,
                 )
-                for col_i, yr in enumerate(years):
-                    yr_alloc = alloc_ts_fund2[yr]
-                    labels = list(yr_alloc.keys())
-                    values = list(yr_alloc.values())
-                    colors = [pie_color_map.get(l, "#94a3b8") for l in labels]
-                    fig_pies.add_trace(
-                        go.Pie(labels=labels, values=values,
-                               marker_colors=colors,
-                               hole=0.4,
-                               textinfo="none",
-                               hovertemplate="<b>%{label}</b><br>%{value:.1f}%<extra></extra>",
-                               showlegend=(col_i == 0)),
-                        row=1, col=col_i+1,
-                    )
-                fig_pies.update_layout(
-                    paper_bgcolor="#0d1117", font_color="#e2e8f0",
-                    height=260, margin=dict(l=0, r=0, t=30, b=0),
-                    legend=dict(
-                        orientation="h", yanchor="bottom", y=-0.35,
-                        xanchor="center", x=0.5, font_size=10,
-                        bgcolor="rgba(0,0,0,0)",
-                    ),
-                )
-                fig_pies.update_annotations(font_size=11, font_color="#94a3b8")
-                st.plotly_chart(fig_pies, use_container_width=True, key=f"pies_{fund}")
+                st.plotly_chart(fig_stk, use_container_width=True, key=f"stk_{fund}")
 
             st.divider()
 
@@ -811,12 +823,12 @@ elif page == "🏦 기관별 상세":
                 st.plotly_chart(fig_ret, use_container_width=True, key=f"ret_{fund}")
 
             with c4:
-                st.markdown("##### 기관 특징")
-                st.write(meta["description"])
-                st.markdown("##### 최근 운용 방향")
-                st.write(meta["strategy"])
-                st.markdown("##### 최근 이슈")
-                st.warning(issue)
+                st.markdown("<p style='font-size:15px;font-weight:700;color:#90caf9'>기관 특징</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='font-size:13px;color:#c9d6e3;line-height:1.7'>{meta['description']}</p>", unsafe_allow_html=True)
+                st.markdown("<p style='font-size:15px;font-weight:700;color:#90caf9;margin-top:12px'>최근 운용 방향</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='font-size:13px;color:#c9d6e3;line-height:1.7'>{meta['strategy']}</p>", unsafe_allow_html=True)
+                st.markdown("<p style='font-size:15px;font-weight:700;color:#fbbf24;margin-top:12px'>⚡ 최근 이슈</p>", unsafe_allow_html=True)
+                st.markdown(f"<div style='background:#1e2a1a;border-left:3px solid #fbbf24;border-radius:4px;padding:10px 14px;font-size:13px;color:#d4e8c2;line-height:1.7'>{issue}</div>", unsafe_allow_html=True)
 
             # AI 상세 분석
             st.divider()
@@ -1108,15 +1120,14 @@ elif page == "📁 Data Room":
         with st.expander(f"📄 {item['file']}  →  {item.get('fund_name','')} ({item.get('report_year','')})"):
             st.markdown(f"**요약:** {item.get('summary','')}")
 
-            alloc = item.get("allocation",{})
-            prior = item.get("prior_allocation",{})
+            alloc_dr = item.get("allocation",{})
 
-            if alloc:
+            if alloc_dr:
                 st.markdown("**추출된 자산배분 (검수 후 저장)**")
                 df_edit = pd.DataFrame({
-                    "자산군": list(alloc),
-                    "AI 추출 (%)": [round(v,1) for v in alloc.values()],
-                    "검수 수정 (%)": [round(v,1) for v in alloc.values()],
+                    "자산군": list(alloc_dr),
+                    "AI 추출 (%)": [round(v,1) for v in alloc_dr.values()],
+                    "검수 수정 (%)": [round(v,1) for v in alloc_dr.values()],
                 })
                 edited = st.data_editor(df_edit, key=f"edit_{item['file']}",
                                         use_container_width=True, hide_index=True)
@@ -1124,29 +1135,26 @@ elif page == "📁 Data Room":
                 if st.button("✅ 대시보드에 반영", key=f"save_{item['file']}"):
                     fund_name = item.get("fund_name","")
                     year      = item.get("report_year","")
-                    # session_state에 저장 (향후 확장 가능)
                     saved = st.session_state.get("dr_saved",{})
                     saved[(fund_name, year)] = dict(zip(edited["자산군"], edited["검수 수정 (%)"]))
                     st.session_state["dr_saved"] = saved
                     st.success(f"'{fund_name} ({year})' 저장 완료! 기관별 상세 탭에서 확인하세요.")
 
-                # 시각화
-                fig = px.bar(
-                    pd.DataFrame({"자산군":list(alloc),"비중(%)":list(alloc.values())}).sort_values("비중(%)",ascending=True),
+                fig_dr = px.bar(
+                    pd.DataFrame({"자산군":list(alloc_dr),"비중(%)":list(alloc_dr.values())}).sort_values("비중(%)",ascending=True),
                     x="비중(%)", y="자산군", orientation="h",
                     title=f"{item.get('fund_name','')} ({item.get('report_year','')}) 추출 배분",
                     text="비중(%)"
                 )
-                fig.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
-                fig.update_layout(paper_bgcolor="#0d1117",plot_bgcolor="#111827",font_color="#e2e8f0")
-                st.plotly_chart(fig, use_container_width=True)
+                fig_dr.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
+                fig_dr.update_layout(paper_bgcolor="#0d1117",plot_bgcolor="#111827",font_color="#e2e8f0")
+                st.plotly_chart(fig_dr, use_container_width=True)
             else:
                 st.warning("배분 데이터를 추출하지 못했습니다.")
 
-    # 저장된 검수 데이터 목록
     saved = st.session_state.get("dr_saved",{})
     if saved:
         st.divider()
         st.markdown("##### ✅ 검수 완료 데이터")
-        for (fn, yr), alloc in saved.items():
-            st.markdown(f"• **{fn} ({yr})** – {len(alloc)}개 항목")
+        for (fn, yr), alloc_s in saved.items():
+            st.markdown(f"• **{fn} ({yr})** – {len(alloc_s)}개 항목")
