@@ -1107,146 +1107,204 @@ elif page == "🏦 기관별 상세":
 elif page == "📊 자산군별 비교":
     st.title("📊 자산군별 비교")
 
+    # 전체 연도 목록 (모든 기관 ALLOC_TS 합집합, 정규화)
+    all_ts_years = sorted(set(
+        norm_year(yr)
+        for f in FUNDS
+        for yr in ALLOC_TS.get(f, {}).keys()
+    ), key=lambda x: int(x))
+
+    fund_color_map = {
+        "국민연금(NPS)":"#f59e0b","CPPIB":"#3b82f6",
+        "CalPERS":"#10b981","OTPP":"#8b5cf6","PSP Investments":"#f43f5e",
+    }
+
     asset_tabs = st.tabs(ALT_CLASSES)
 
     for tab_idx, tab in enumerate(asset_tabs):
         asset = ALT_CLASSES[tab_idx]
 
         with tab:
-            # 비중 순위 테이블
-            rows = []
-            for fund in FUNDS:
-                cur, pre = ALLOC[fund].get(asset,(None,None))
-                rows.append({
-                    "기관": fund,
-                    "현재 비중": cur,
-                    "전기 비중": pre,
-                    "증감(pp)": round(cur-pre, 1) if cur and pre else None,
-                    "대체투자 내 비중": round(cur / sum(ALLOC[fund][a][0] for a in ALT_CLASSES if ALLOC[fund].get(a,(None,None))[0]) * 100, 1) if cur else None,
-                })
-            df_rank = pd.DataFrame(rows).sort_values("현재 비중", ascending=False)
-            df_rank["순위"] = range(1, len(df_rank)+1)
+            # ── 연도 탭 ──────────────────────────────────────────
+            st.markdown(
+                "<p style='font-size:15px;font-weight:700;color:#1d4ed8;margin:4px 0 8px'>"
+                "📅 연도별 기관 비중 비교</p>",
+                unsafe_allow_html=True
+            )
+            yr_tabs = st.tabs(all_ts_years)
 
-            c1, c2 = st.columns([1, 1.4])
+            for yi, yr_tab in enumerate(yr_tabs):
+                sel_yr = all_ts_years[yi]
+                with yr_tab:
+                    # 해당 연도 데이터 수집
+                    yr_rows = []
+                    for fund in FUNDS:
+                        yr_alloc_map = {norm_year(k): v for k, v in ALLOC_TS.get(fund, {}).items()}
+                        cur = yr_alloc_map.get(sel_yr, {}).get(asset)
+                        pre_yr = str(int(sel_yr) - 1)
+                        pre = yr_alloc_map.get(pre_yr, {}).get(asset)
+                        delta = round(cur - pre, 1) if (cur is not None and pre is not None) else None
+                        yr_rows.append({"기관": fund, "비중": cur, "전기": pre, "증감(pp)": delta})
 
-            with c1:
-                st.markdown(f"##### {asset} – 기관별 비중 순위")
-                for _, row in df_rank.iterrows():
-                    cur = row["현재 비중"]
-                    d   = row["증감(pp)"]
-                    # d=0도 표시되도록 is None 체크
-                    d_valid = d is not None and not (isinstance(d, float) and np.isnan(d))
-                    color = "#4ade80" if (d_valid and d > 0) else ("#f87171" if (d_valid and d < 0) else "#94a3b8")
-                    delta_txt = ""
-                    if d_valid:
-                        sign = "▲ +" if d > 0 else ("▼ " if d < 0 else "→ ")
-                        delta_txt = f"<span style='color:{color};font-weight:600'>{sign}{abs(d):.1f}%p</span>"
-                    rank_html = (
-                        f"<div style='display:flex;justify-content:space-between;align-items:center;"
-                        f"padding:6px 0;border-bottom:1px solid #1e293b'>"
-                        f"<span style='color:#64748b;font-size:12px;min-width:28px'><b style='color:#1e293b'>{int(row['순위'])}</b>위</span>"
-                        f"<span style='flex:1;padding:0 8px;font-size:13px;font-weight:600;color:#1e293b'>{row['기관']}</span>"
-                        f"<span style='font-size:15px;font-weight:700;color:#1d4ed8'>{pct_badge(cur)}</span>"
-                        f"&nbsp;&nbsp;{delta_txt}</div>"
-                    )
-                    st.markdown(rank_html, unsafe_allow_html=True)
+                    df_yr = pd.DataFrame(yr_rows)
+                    df_yr_valid = df_yr.dropna(subset=["비중"]).sort_values("비중", ascending=False).copy()
+                    df_yr_valid["순위"] = range(1, len(df_yr_valid) + 1)
 
-            with c2:
-                # 수평 막대차트
-                df_plot = df_rank.dropna(subset=["현재 비중"]).copy()
-                df_plot["색상"] = df_plot["증감(pp)"].apply(
-                    lambda d: "#81c995" if (d and d>0.2) else ("#f48fb1" if (d and d<-0.2) else "#94a3b8"))
-                fig = go.Figure(go.Bar(
-                    x=df_plot["현재 비중"], y=df_plot["기관"],
-                    orientation="h",
-                    marker_color=df_plot["색상"].tolist(),
-                    text=[f"{v:.1f}%" for v in df_plot["현재 비중"]],
-                    textposition="outside",
-                ))
-                fig.update_layout(
-                    title=f"{asset} 비중 순위",
-                    paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
-                    font=dict(color=TICK_COLOR, size=12), xaxis_title="비중 (%)",
-                    xaxis=dict(gridcolor=GRID_COLOR), yaxis=dict(gridcolor=GRID_COLOR),
-                    height=300,
-                )
-                st.plotly_chart(fig, use_container_width=True, key=f"bar_{asset}")
+                    if df_yr_valid.empty:
+                        st.caption(f"{sel_yr}년 데이터가 없는 기관이 있습니다.")
+                    else:
+                        c1, c2 = st.columns([1, 1.4])
+
+                        with c1:
+                            st.markdown(
+                                f"<p style='font-size:14px;font-weight:700;color:#1e293b;margin:0 0 8px'>"
+                                f"{asset} – {sel_yr}년 기관별 비중 순위</p>",
+                                unsafe_allow_html=True
+                            )
+                            for _, row in df_yr_valid.iterrows():
+                                cur_v = row["비중"]
+                                d = row["증감(pp)"]
+                                d_valid = d is not None and not (isinstance(d, float) and np.isnan(d))
+                                d_col = "#15803d" if (d_valid and d > 0) else ("#b91c1c" if (d_valid and d < 0) else "#64748b")
+                                d_sign = "▲ +" if (d_valid and d > 0) else ("▼ " if (d_valid and d < 0) else "→ ")
+                                d_txt = f"<span style='color:{d_col};font-weight:600;font-size:12px'>{d_sign}{abs(d):.1f}%p</span>" if d_valid else ""
+                                pre_note = f"<span style='font-size:11px;color:#94a3b8'>(전기 {row['전기']:.1f}%)</span>" if (d_valid and row['전기'] is not None) else ""
+                                rh = (
+                                    f"<div style='display:flex;justify-content:space-between;align-items:center;"
+                                    f"padding:6px 0;border-bottom:1px solid #e2e8f0'>"
+                                    f"<span style='color:#64748b;font-size:12px;min-width:26px'>"
+                                    f"<b style='color:#1e293b'>{int(row['순위'])}</b>위</span>"
+                                    f"<span style='flex:1;padding:0 6px;font-size:13px;font-weight:600;color:#1e293b'>{row['기관']}</span>"
+                                    f"<span style='font-size:15px;font-weight:700;color:#1d4ed8'>{cur_v:.1f}%</span>"
+                                    f"&nbsp;{d_txt}</div>"
+                                )
+                                st.markdown(rh, unsafe_allow_html=True)
+
+                        with c2:
+                            bar_colors = [
+                                "#15803d" if (r["증감(pp)"] is not None and r["증감(pp)"] > 0.2)
+                                else ("#b91c1c" if (r["증감(pp)"] is not None and r["증감(pp)"] < -0.2)
+                                else "#64748b")
+                                for _, r in df_yr_valid.iterrows()
+                            ]
+                            fig_yr = go.Figure(go.Bar(
+                                x=df_yr_valid["비중"],
+                                y=df_yr_valid["기관"],
+                                orientation="h",
+                                marker_color=bar_colors,
+                                text=[f"{v:.1f}%" for v in df_yr_valid["비중"]],
+                                textposition="outside",
+                                textfont=dict(color="#1e293b", size=12),
+                                cliponaxis=False,
+                            ))
+                            fig_yr.update_layout(
+                                title=dict(text=f"{asset} 비중 – {sel_yr}년",
+                                           font=dict(color="#1e293b", size=13)),
+                                paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                                font=dict(color=TICK_COLOR, size=12),
+                                xaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%",
+                                           range=[0, df_yr_valid["비중"].max() * 1.4],
+                                           tickfont=dict(color=TICK_COLOR)),
+                                yaxis=dict(tickfont=dict(color=TICK_COLOR, size=12)),
+                                margin=dict(l=0, r=60, t=36, b=10),
+                                height=280, showlegend=False,
+                            )
+                            st.plotly_chart(fig_yr, use_container_width=True,
+                                            key=f"bar_{asset}_{sel_yr}")
+
+                        # 전기 대비 증감 차트 (해당 연도 전용)
+                        df_delta_yr = df_yr_valid.dropna(subset=["증감(pp)"]).copy()
+                        if not df_delta_yr.empty:
+                            st.markdown(
+                                f"<p style='font-size:14px;font-weight:700;color:#1e293b;margin:14px 0 4px'>"
+                                f"{int(sel_yr)-1} → {sel_yr} 전기 대비 증감</p>",
+                                unsafe_allow_html=True
+                            )
+                            bar_d_colors = [
+                                "#15803d" if v > 0 else ("#b91c1c" if v < 0 else "#64748b")
+                                for v in df_delta_yr["증감(pp)"]
+                            ]
+                            fig_d = go.Figure(go.Bar(
+                                x=df_delta_yr["기관"],
+                                y=df_delta_yr["증감(pp)"],
+                                marker_color=bar_d_colors,
+                                text=[f"{v:+.1f}pp" for v in df_delta_yr["증감(pp)"]],
+                                textposition="outside",
+                                textfont=dict(color="#1e293b", size=12),
+                            ))
+                            max_abs = df_delta_yr["증감(pp)"].abs().max()
+                            fig_d.update_layout(
+                                paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                                font=dict(color=TICK_COLOR, size=12),
+                                xaxis=dict(tickfont=dict(color=TICK_COLOR, size=11)),
+                                yaxis=dict(gridcolor=GRID_COLOR,
+                                           ticksuffix="pp",
+                                           tickfont=dict(color=TICK_COLOR),
+                                           range=[-(max_abs*1.5+0.5), max_abs*1.5+0.5]),
+                                margin=dict(l=0, r=20, t=10, b=10),
+                                height=240, showlegend=False,
+                            )
+                            fig_d.add_hline(y=0, line_color="#94a3b8", line_width=1)
+                            st.plotly_chart(fig_d, use_container_width=True,
+                                            key=f"delta_{asset}_{sel_yr}")
 
             st.divider()
 
-            # 전기 대비 비교 차트
-            st.markdown(f"##### 전기 대비 증감 비교")
-            df_delta = df_rank.dropna(subset=["증감(pp)"]).copy()
-            fig2 = px.bar(df_delta, x="기관", y="증감(pp)",
-                          color="증감(pp)", color_continuous_scale=["#f48fb1","#94a3b8","#81c995"],
-                          text="증감(pp)")
-            fig2.update_traces(texttemplate="%{text:+.1f}pp", textposition="outside")
-            fig2.update_layout(paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
-                               font=dict(color=TICK_COLOR, size=12),showlegend=False,
-                               yaxis=dict(gridcolor=GRID_COLOR))
-            st.plotly_chart(fig2, use_container_width=True, key=f"delta_{asset}")
-
-            st.divider()
-
-            # ── 5개년 기관별 비중 추이 ──────────────────────────────
-            st.markdown(f"##### 📈 {asset} – 기관별 5개년 비중 추이")
-            fund_color_map = {
-                "국민연금(NPS)":"#f59e0b","CPPIB":"#3b82f6",
-                "CalPERS":"#10b981","OTPP":"#8b5cf6","PSP Investments":"#f43f5e",
-            }
+            # ── 5개년 추이 라인 차트 ───────────────────────────────
+            st.markdown(
+                f"<p style='font-size:15px;font-weight:700;color:#1d4ed8;margin:4px 0 8px'>"
+                f"📈 {asset} – 기관별 5개년 비중 추이</p>",
+                unsafe_allow_html=True
+            )
             ts5_rows = []
             for f in FUNDS:
-                alloc_ts_f = ALLOC_TS.get(f, {})
-                for yr, yr_alloc in alloc_ts_f.items():
+                for yr, yr_alloc in ALLOC_TS.get(f, {}).items():
                     val = yr_alloc.get(asset)
                     if val is not None:
                         ts5_rows.append({"연도": norm_year(yr), "기관": f, "비중(%)": val})
             if ts5_rows:
                 df_ts5 = pd.DataFrame(ts5_rows)
                 fig_ts5 = px.line(df_ts5, x="연도", y="비중(%)", color="기관",
-                                  markers=True,
-                                  color_discrete_map=fund_color_map,
-                                  title=f"{asset} 기관별 5개년 비중 변화")
+                                  markers=True, color_discrete_map=fund_color_map,
+                                  title=f"{asset} 기관별 비중 변화 추이")
                 fig_ts5.update_layout(
                     paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
-                    font=dict(color=TICK_COLOR, size=12), legend=dict(font=dict(color=TICK_COLOR, size=11), bgcolor="rgba(0,0,0,0)"),
-                    yaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%"),
-                    xaxis=dict(gridcolor=GRID_COLOR),
+                    font=dict(color=TICK_COLOR, size=12),
+                    legend=dict(font=dict(color=TICK_COLOR, size=11), bgcolor="rgba(0,0,0,0)"),
+                    yaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%",
+                               tickfont=dict(color=TICK_COLOR)),
+                    xaxis=dict(gridcolor=GRID_COLOR, tickfont=dict(color=TICK_COLOR, size=12)),
                     hovermode="x unified",
                 )
                 fig_ts5.update_traces(line_width=2.5)
                 st.plotly_chart(fig_ts5, use_container_width=True, key=f"ts5_{asset}")
 
-                # 연도별 기관 비중 요약표 (히트맵)
+                # 히트맵
                 df_pivot = df_ts5.pivot(index="기관", columns="연도", values="비중(%)")
                 df_pivot = df_pivot.reindex([f for f in FUNDS if f in df_pivot.index])
-                # 연도 정렬
                 sorted_cols = sorted(df_pivot.columns, key=lambda x: int(x))
                 df_pivot = df_pivot[sorted_cols]
-
                 st.markdown(
                     "<p style='font-size:14px;font-weight:700;color:#1d4ed8;margin:14px 0 4px'>"
                     "📋 연도별 비중 요약표 "
                     "<span style='font-size:11px;font-weight:400;color:#64748b'>"
-                    "— 셀 색상이 짙을수록 해당 연도 비중이 높음. 행=기관, 열=연도</span></p>",
+                    "— 색이 짙을수록 비중 높음 / 행=기관, 열=연도</span></p>",
                     unsafe_allow_html=True
                 )
                 fig_heat = go.Figure(go.Heatmap(
                     z=df_pivot.values.tolist(),
                     x=list(df_pivot.columns),
                     y=list(df_pivot.index),
-                    colorscale=[[0,"#1e293b"],[0.5,"#2563eb"],[1,"#93c5fd"]],
-                    text=[[f"{v:.1f}%" if (v == v) else "–"   # NaN check
-                           for v in row] for row in df_pivot.values],
+                    colorscale=[[0,"#f0f7ff"],[0.5,"#3b82f6"],[1,"#1e3a8a"]],
+                    text=[[f"{v:.1f}%" if (v==v) else "–" for v in row]
+                          for row in df_pivot.values],
                     texttemplate="%{text}",
-                    textfont=dict(size=13, color="#ffffff"),
+                    textfont=dict(size=12, color="#1e293b"),
                     showscale=True,
                     colorbar=dict(
                         title=dict(text="%", font=dict(color=TICK_COLOR)),
-                        tickfont=dict(color=TICK_COLOR),
-                        thickness=12, len=0.8,
+                        tickfont=dict(color=TICK_COLOR), thickness=12, len=0.8,
                     ),
-                    hoverongaps=False,
                     hovertemplate="<b>%{y}</b><br>%{x}년<br>비중: <b>%{text}</b><extra></extra>",
                 ))
                 fig_heat.update_layout(
@@ -1260,24 +1318,23 @@ elif page == "📊 자산군별 비교":
 
             st.divider()
 
-            # 자산군 특징 & 이슈
+            # ── 자산군 특징 & 전략 방향 ────────────────────────────
             c3, c4 = st.columns(2)
             with c3:
                 st.markdown("##### 자산군 특징")
                 st.info(ASSET_SUMMARY.get(asset,""))
             with c4:
-                st.markdown("##### 기관별 전략 방향")
+                st.markdown("##### 기관별 현재 전략 방향 (최신 기준)")
                 for fund in FUNDS:
-                    cur, pre = ALLOC[fund].get(asset,(None,None))
-                    d = (cur-pre) if cur and pre else 0
-                    direction = "📈 확대" if d>0.5 else ("📉 축소" if d<-0.5 else "➡ 유지")
-                    st.markdown(f"**{fund}**: {pct_badge(cur)} {direction}")
+                    cur_v, pre_v = ALLOC[fund].get(asset,(None,None))
+                    d = (cur_v - pre_v) if cur_v and pre_v else 0
+                    direction = "📈 확대" if d > 0.5 else ("📉 축소" if d < -0.5 else "➡ 유지")
+                    st.markdown(f"**{fund}**: {pct_badge(cur_v)} {direction}")
 
-            # AI 비교 코멘트
+            # ── AI 분석 ────────────────────────────────────────────
             st.divider()
             if st.button("🧠 AI 자산군 비교 분석", key=f"ai_asset_btn_{asset}"):
                 data = {f: ALLOC[f].get(asset,(None,None)) for f in FUNDS}
-                # dict를 f-string 밖에서 먼저 생성 (Python 3.12+ f-string 파싱 이슈 회피)
                 data_json = json.dumps(
                     {f: {"cur": v[0], "pre": v[1]} for f, v in data.items()},
                     ensure_ascii=False
@@ -1301,6 +1358,7 @@ elif page == "📊 자산군별 비교":
                 st.markdown(f"**트렌드:** {ai_ar.get('trend','')}")
                 st.success(f"🎯 **기회:** {ai_ar.get('opportunity','')}")
                 st.warning(f"⚠️ **주의:** {ai_ar.get('caution','')}")
+
 
 # ══════════════════════════════════════════════════════════════
 # PAGE 4: News · Issues · Deals
