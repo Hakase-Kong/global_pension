@@ -794,71 +794,96 @@ elif page == "🏦 기관별 상세":
 &nbsp;&nbsp;<span style='color:#64748b'>{meta['country']} | {meta['type']} | AUM {meta['aum']}</span>
 </div>""", unsafe_allow_html=True)
 
-            # ── 자산배분 가로 막대차트 + 대체투자 카드 ─────────────
+            # ── 연도별 자산배분 + 대체투자 변화 ─────────────────────
             asset_color_map = {
                 "Private Equity":"#3b82f6","Private Credit":"#8b5cf6",
                 "Infrastructure":"#10b981","Real Estate":"#f59e0b",
                 "Hedge Fund/Other":"#6366f1","Public Equity":"#475569","Fixed Income":"#64748b",
             }
 
-            c1, c2 = st.columns([1.4, 1])
+            # 해당 기관의 연도 목록 (정규화)
+            fund_ts = ALLOC_TS.get(fund, {})
+            fund_yr_keys = list(fund_ts.keys())          # 원본 키 (FY포함)
+            fund_yrs     = [norm_year(y) for y in fund_yr_keys]  # 정규화
 
-            with c1:
-                # 전체 자산배분 가로 막대차트
-                all_alloc_items = [(a, alloc.get(a,(0,0))) for a in ALL_CLASSES]
-                bar_labels = [a for a,_ in all_alloc_items]
-                bar_values = [v[0] if v[0] else 0 for _,v in all_alloc_items]
-                bar_colors = [asset_color_map.get(a,"#64748b") for a in bar_labels]
-                fig_bar = go.Figure(go.Bar(
-                    y=bar_labels, x=bar_values,
-                    orientation="h",
-                    marker_color=bar_colors,
-                    text=[f"{v:.1f}%" for v in bar_values],
-                    textposition="outside",
-                    textfont=dict(size=13, color="#1e293b"),
-                    cliponaxis=False,
-                ))
-                fig_bar.update_layout(
-                    title=dict(text=f"{fund} 현재 자산배분", font_size=14,
-                               font=dict(color="#94a3b8")),
-                    paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
-                    font=dict(color=TICK_COLOR, size=13),
-                    xaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%",
-                               range=[0, max(bar_values)*1.35],
-                               tickfont=dict(color=TICK_COLOR, size=11),
-                               showgrid=True),
-                    yaxis=dict(tickfont=dict(color="#1e293b", size=13),
-                               categoryorder="array",
-                               categoryarray=list(reversed(bar_labels))),
-                    margin=dict(l=10, r=70, t=44, b=10),
-                    height=310,
-                    showlegend=False,
-                )
-                st.plotly_chart(fig_bar, use_container_width=True, key=f"hbar_{fund}")
+            st.markdown(
+                "<p style='font-size:15px;font-weight:700;color:#1d4ed8;margin:4px 0 8px'>"
+                "📅 연도별 자산배분 현황</p>",
+                unsafe_allow_html=True
+            )
+            alloc_yr_tabs = st.tabs(fund_yrs)
 
-            with c2:
-                # 대체투자 전기 대비 카드
-                st.markdown("<p style='font-size:15px;font-weight:700;color:#1d4ed8;margin-bottom:12px'>대체투자 비중 변화 (전기 대비)</p>", unsafe_allow_html=True)
-                for a in ALT_CLASSES:
-                    cur, pre = alloc.get(a,(None,None))
-                    if cur is None: continue
-                    d = (cur - pre) if pre else 0
-                    delta_color_val = "#4ade80" if d>0.2 else ("#f87171" if d<-0.2 else "#94a3b8")
-                    delta_icon = "▲" if d>0.2 else ("▼" if d<-0.2 else "→")
-                    delta_str = f"{delta_icon} {abs(d):.1f}%p"
-                    bar_pct   = min(cur / 30 * 100, 100)
-                    ac_color  = asset_color_map.get(a, "#64748b")
-                    st.markdown(f"""
-<div style='margin-bottom:14px'>
+            for yi, yr_tab in enumerate(alloc_yr_tabs):
+                sel_raw = fund_yr_keys[yi]          # 원본 키
+                sel_yr  = fund_yrs[yi]              # 정규화 연도
+                with yr_tab:
+                    yr_alloc_data = fund_ts.get(sel_raw, {})
+                    # 전기 데이터
+                    prev_raw  = fund_yr_keys[yi-1] if yi > 0 else None
+                    prev_data = fund_ts.get(prev_raw, {}) if prev_raw else {}
+
+                    c1, c2 = st.columns([1.4, 1])
+
+                    with c1:
+                        bar_labels = ALL_CLASSES
+                        bar_values = [yr_alloc_data.get(a, 0) for a in bar_labels]
+                        bar_colors = [asset_color_map.get(a,"#64748b") for a in bar_labels]
+                        fig_bar = go.Figure(go.Bar(
+                            y=bar_labels, x=bar_values,
+                            orientation="h",
+                            marker_color=bar_colors,
+                            text=[f"{v:.1f}%" for v in bar_values],
+                            textposition="outside",
+                            textfont=dict(size=12, color="#1e293b"),
+                            cliponaxis=False,
+                        ))
+                        max_v = max(bar_values) if bar_values else 10
+                        fig_bar.update_layout(
+                            title=dict(text=f"{fund} {sel_yr}년 자산배분",
+                                       font=dict(color="#475569", size=13)),
+                            paper_bgcolor=PAPER_BG, plot_bgcolor=CHART_BG,
+                            font=dict(color=TICK_COLOR, size=12),
+                            xaxis=dict(gridcolor=GRID_COLOR, ticksuffix="%",
+                                       range=[0, max_v*1.35],
+                                       tickfont=dict(color=TICK_COLOR, size=11)),
+                            yaxis=dict(tickfont=dict(color="#1e293b", size=12),
+                                       categoryorder="array",
+                                       categoryarray=list(reversed(bar_labels))),
+                            margin=dict(l=10, r=70, t=36, b=10),
+                            height=300, showlegend=False,
+                        )
+                        st.plotly_chart(fig_bar, use_container_width=True,
+                                        key=f"hbar_{fund}_{sel_yr}")
+
+                    with c2:
+                        prev_label = norm_year(prev_raw) if prev_raw else None
+                        hdr = (f"전기({prev_label}) 대비 변화" if prev_label
+                               else f"{sel_yr}년 대체투자 비중")
+                        st.markdown(
+                            f"<p style='font-size:14px;font-weight:700;color:#1d4ed8;"
+                            f"margin-bottom:10px'>대체투자 비중 변화 ({hdr})</p>",
+                            unsafe_allow_html=True
+                        )
+                        for a in ALT_CLASSES:
+                            cur_v = yr_alloc_data.get(a, 0)
+                            pre_v = prev_data.get(a) if prev_data else None
+                            d = round(cur_v - pre_v, 1) if pre_v is not None else None
+                            d_col  = "#15803d" if (d and d>0.1) else ("#b91c1c" if (d and d<-0.1) else "#64748b")
+                            d_icon = "▲" if (d and d>0.1) else ("▼" if (d and d<-0.1) else "→")
+                            d_str  = f"{d_icon} {abs(d):.1f}%p" if d is not None else "–"
+                            bar_pct = min(cur_v / 30 * 100, 100)
+                            ac_col  = asset_color_map.get(a, "#64748b")
+                            st.markdown(f"""
+<div style='margin-bottom:12px'>
   <div style='display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px'>
-    <span style='font-size:13px;font-weight:600;color:#1e293b'>{a}</span>
+    <span style='font-size:12px;font-weight:600;color:#475569'>{a}</span>
     <span>
-      <span style='font-size:16px;font-weight:700;color:#0f172a'>{cur:.1f}%</span>
-      &nbsp;<span style='font-size:12px;color:{delta_color_val};font-weight:600'>{delta_str}</span>
+      <span style='font-size:15px;font-weight:700;color:#0f172a'>{cur_v:.1f}%</span>
+      &nbsp;<span style='font-size:12px;color:{d_col};font-weight:600'>{d_str}</span>
     </span>
   </div>
-  <div style='background:#e2e8f0;border-radius:4px;height:8px;overflow:hidden'>
-    <div style='background:{ac_color};width:{bar_pct:.1f}%;height:100%;border-radius:4px'></div>
+  <div style='background:#e2e8f0;border-radius:4px;height:7px;overflow:hidden'>
+    <div style='background:{ac_col};width:{bar_pct:.1f}%;height:100%;border-radius:4px'></div>
   </div>
 </div>""", unsafe_allow_html=True)
 
