@@ -3,6 +3,8 @@ Institutional Pension Alt Radar  –  globalpension.py
 실행: streamlit run globalpension.py
 """
 import os, re, io, json, difflib
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 import requests, fitz
 import pandas as pd
 import numpy as np
@@ -207,14 +209,14 @@ ASSET_SUMMARY = {
     "Private Equity": (
         "글로벌 주요 기관들은 바이아웃 중심에서 성장형(Growth)·Venture Growth로 전략을 다변화하고 있으며, "
         "AI·테크·헬스케어 섹터 집중도가 높아지고 있음. "
-        "2022~2023년 밸류에이션 조정과 엑시트 시장 위축으로 대부분 기관이 비중을 축소했으나, "
-        "2024~2025년 점진적 회복 국면에서 선별적 확대가 재개됨. "
+        "2022～2023년 밸류에이션 조정과 엑시트 시장 위축으로 대부분 기관이 비중을 축소했으나, "
+        "2024～2025년 점진적 회복 국면에서 선별적 확대가 재개됨. "
         "빈티지 분산 전략과 GP 재선별(Manager Selection)이 성과의 핵심 결정 요인."
     ),
     "Private Credit": (
         "2022년 이후 금리 급등과 은행권 대출 규제 강화가 맞물리며 직접대출(Direct Lending) 시장이 급성장. "
         "변동금리 구조로 금리 고점 환경에서 스프레드 수혜를 직접 누렸으며, "
-        "주요 기관의 비중이 7~14% 수준으로 확대됨. "
+        "주요 기관의 비중이 7～14% 수준으로 확대됨. "
         "단, NAV 파이낸싱·합성 리스크 이전 등 구조적 복잡성이 증가하고 있어 "
         "신용 분석 역량과 LTV 관리가 중요해지고 있음. 금리 인하 국면에서의 스프레드 압축 여부 주목."
     ),
@@ -227,14 +229,14 @@ ASSET_SUMMARY = {
     ),
     "Real Estate": (
         "글로벌 오피스 시장의 구조적 침체(재택근무 정착)로 CalPERS·PSP·CPPIB 등 대부분 기관이 "
-        "비중을 대폭 축소함. 평가손 인식은 2024~2025년을 기점으로 마무리 단계에 접어들었으나, "
+        "비중을 대폭 축소함. 평가손 인식은 2024～2025년을 기점으로 마무리 단계에 접어들었으나, "
         "공실률 회복까지 추가 시간 필요. 물류(E-commerce 수요), 주거용(임대주택 부족), "
         "데이터센터(AI 수요) 부동산으로의 포트폴리오 재편이 가속화 중. "
         "아시아 물류·주거형 부동산에 대한 기관 관심도가 점진적으로 증가."
     ),
     "Hedge Fund/Other": (
         "CalPERS(10.5%→3.4%)·OTPP 등 주요 기관이 고비용·저투명성을 이유로 헤지펀드 비중을 대폭 축소. "
-        "CTA·매크로 전략은 2022년 급등 이후 2023~2024년 성과 부진으로 매력이 감소함. "
+        "CTA·매크로 전략은 2022년 급등 이후 2023～2024년 성과 부진으로 매력이 감소함. "
         "반면 재보험(ILS) 전략은 자연재해 빈도 증가로 스프레드가 역대 최고 수준을 유지하며 재조명. "
         "PSP의 천연자원·원자재 투자는 에너지 전환 수혜 자산으로 재평가 받고 있음. "
         "절대수익 전략 유지 기관들은 CTA 대신 Reinsurance ILS 비중 확대 검토 중."
@@ -282,12 +284,12 @@ RECENT_ISSUES = {
 # 기관별 리밸런싱 배경 해설 (5개년)
 REBAL_NARRATIVE = {
     "국민연금(NPS)": {
-        "context": "국민연금은 2021~2024년 동안 장기 목표인 대체투자 17% 달성을 위해 체계적 확대 전략을 이행했습니다. 저금리 환경과 공모시장 변동성 확대에 대응해 사모(PE)·인프라 비중을 꾸준히 늘린 반면, 채권 비중은 금리 상승 리스크를 반영해 단계적으로 축소했습니다.",
-        "issue": "2022년 글로벌 주식·채권 동반 하락으로 -8.2% 손실을 기록했으나, 이후 대체자산의 방어적 역할이 부각되며 대체투자 확대 기조를 강화했습니다. 공모주식은 해외 비중(특히 북미·선진국)을 늘려 2023~2024년 높은 성과를 거뒀습니다.",
+        "context": "국민연금은 2021～2024년 동안 장기 목표인 대체투자 17% 달성을 위해 체계적 확대 전략을 이행했습니다. 저금리 환경과 공모시장 변동성 확대에 대응해 사모(PE)·인프라 비중을 꾸준히 늘린 반면, 채권 비중은 금리 상승 리스크를 반영해 단계적으로 축소했습니다.",
+        "issue": "2022년 글로벌 주식·채권 동반 하락으로 -8.2% 손실을 기록했으나, 이후 대체자산의 방어적 역할이 부각되며 대체투자 확대 기조를 강화했습니다. 공모주식은 해외 비중(특히 북미·선진국)을 늘려 2023～2024년 높은 성과를 거뒀습니다.",
         "outlook": "2025년 이후 인프라와 사모대출 중심의 추가 확대가 예상되며, 국내 부동산은 상업용 오피스 약세로 비중 유지 또는 축소될 전망입니다.",
     },
     "CPPIB": {
-        "context": "CPPIB는 FY2022~FY2026 동안 액티브 알파 전략의 일환으로 사모주식(PE) 비중을 32%→22%로 큰 폭 축소했습니다. 이는 2022~2023년 PE 밸류에이션 조정과 엑시트 시장 위축에 대응한 것으로, 동시에 공모주식을 27%→36%로 확대해 유동성을 확보했습니다.",
+        "context": "CPPIB는 FY2022~FY2026 동안 액티브 알파 전략의 일환으로 사모주식(PE) 비중을 32%→22%로 큰 폭 축소했습니다. 이는 2022～2023년 PE 밸류에이션 조정과 엑시트 시장 위축에 대응한 것으로, 동시에 공모주식을 27%→36%로 확대해 유동성을 확보했습니다.",
         "issue": "인프라·부동산을 FY2026부터 'Real Assets'로 통합 공시하는 구조 개편이 이루어졌으며, 지속가능에너지 인프라를 별도 카테고리로 신설했습니다. Active Equities 전략에서 FY2026에 -$3.5B 손실이 발생해 공모주식 내 전략 재검토 중입니다.",
         "outlook": "PE 비중 축소가 일단락되고 Private Credit은 금리 고점 수혜로 유지될 전망입니다. 지속가능에너지 인프라는 중장기 확대 기조를 유지할 것으로 보입니다.",
     },
@@ -297,7 +299,7 @@ REBAL_NARRATIVE = {
         "outlook": "펀딩비율 79% 개선 추세가 지속되면 PE 추가 확대 여력이 생기며, Private Debt 신설 카테고리가 본격화될 전망입니다.",
     },
     "OTPP": {
-        "context": "OTPP는 2021~2025년 인프라를 11%→13%로 유지하다 고점(17%) 이후 축소했고, 대신 공모주식을 11%→18%로 확대했습니다. 2022~2023년 글로벌 인프라 자산 가격 상승으로 차익을 실현하고, 유동성 높은 공모 자산을 늘려 리밸런싱 여력을 확보했습니다.",
+        "context": "OTPP는 2021～2025년 인프라를 11%→13%로 유지하다 고점(17%) 이후 축소했고, 대신 공모주식을 11%→18%로 확대했습니다. 2022～2023년 글로벌 인프라 자산 가격 상승으로 차익을 실현하고, 유동성 높은 공모 자산을 늘려 리밸런싱 여력을 확보했습니다.",
         "issue": "PE 비중은 2025년 25%로 소폭 축소됐는데, Venture Growth 카테고리를 신설해 성장형 자산 내 세분화를 도모했습니다. 2025년 벤치마크 대비 -5.0%p 언더퍼폼은 PE 포트폴리오(-5.3%)의 부진이 주된 원인입니다.",
         "outlook": "Venture Growth(+30.2%, 2025) 성과를 바탕으로 PE 내 성장형 비중 확대가 이루어질 것으로 예상됩니다.",
     },
@@ -408,14 +410,14 @@ ASSET_OVERVIEW = {
     "Private Equity": {
         "overview":   "비상장 기업 지분 투자를 통해 장기 자본이득을 추구하는 자산군. 바이아웃·성장형·벤처 등 전략별로 위험-수익 프로파일이 상이하며, GP 역량과 빈티지 분산이 핵심 성과 결정 요인임.",
         "attraction": "장기적 초과수익(알파) 창출 가능 / 경영 참여를 통한 가치 제고 / 공모시장 대비 투자 유니버스 확장 / 인플레이션 환경에서도 실적 연동 수익 확보 가능",
-        "risk":       "장기 비유동성(Lock-up 7~10년) / 경기 침체기 밸류에이션 조정 및 엑시트 지연 / GP 선정 역량에 따른 성과 편차 큼 / 고금리 환경에서 레버리지 바이아웃 수익성 압박",
-        "recent":     "2022~2023년 금리 상승으로 밸류에이션 조정 및 엑시트 시장 위축. 2024년 이후 선택적 회복세. 주요 기관들은 바이아웃 비중 축소 후 성장형·Venture Growth로 전환 중.",
+        "risk":       "장기 비유동성(Lock-up 7～10년) / 경기 침체기 밸류에이션 조정 및 엑시트 지연 / GP 선정 역량에 따른 성과 편차 큼 / 고금리 환경에서 레버리지 바이아웃 수익성 압박",
+        "recent":     "2022～2023년 금리 상승으로 밸류에이션 조정 및 엑시트 시장 위축. 2024년 이후 선택적 회복세. 주요 기관들은 바이아웃 비중 축소 후 성장형·Venture Growth로 전환 중.",
     },
     "Private Credit": {
         "overview":   "비상장 기업 대상 직접대출(Direct Lending)·메자닌·디스트레스드 투자 등을 포함하는 사모 대출 자산군. 2022년 이후 은행 규제 강화로 시장 급성장.",
         "attraction": "고금리 환경에서 변동금리 구조로 직접 수혜 / 은행 대비 신속한 대출 실행 / PE 대비 하방 보호(담보·우선순위) / 꾸준한 현금흐름 창출",
         "risk":       "차주 신용위험 집중 / NAV 파이낸싱 등 구조적 리스크 증가 / 경기 침체 시 부실 채권 급증 가능 / 유동성 프리미엄 희석 우려",
-        "recent":     "글로벌 주요 기관들 비중 확대 지속. OTPP·PSP 14~10% 수준 유지. 금리 고점 이후에도 스프레드 매력 유지. NAV 파이낸싱 리스크에 대한 모니터링 강화 필요.",
+        "recent":     "글로벌 주요 기관들 비중 확대 지속. OTPP·PSP 14～10% 수준 유지. 금리 고점 이후에도 스프레드 매력 유지. NAV 파이낸싱 리스크에 대한 모니터링 강화 필요.",
     },
     "Infrastructure": {
         "overview":   "도로·공항·에너지·데이터센터 등 필수 인프라 자산에 대한 지분/채권 투자. 장기 계약 기반 안정적 현금흐름과 인플레이션 연동 특성이 핵심 매력.",
@@ -501,6 +503,38 @@ ASSET_KEYWORDS = {
     "Hedge Fund/Other":["hedge fund","헤지펀드","absolute return","CTA"],
 }
 
+# ── 자산군별 전용 뉴스 검색 쿼리 (Google News RSS, 영문+국문) ──
+ASSET_NEWS_QUERIES = {
+    "Private Equity": {
+        "en": '"private equity" (pension OR institutional OR buyout OR LP)',
+        "ko": '사모펀드 (연기금 OR 기관투자 OR 출자 OR 바이아웃)',
+    },
+    "Private Credit": {
+        "en": '("private credit" OR "direct lending") (pension OR institutional OR fund)',
+        "ko": '(사모대출 OR 사모크레딧 OR 직접대출) (연기금 OR 기관투자 OR 출자)',
+    },
+    "Infrastructure": {
+        "en": 'infrastructure investment (pension OR institutional OR "sovereign fund" OR "data center")',
+        "ko": '인프라 투자 (연기금 OR 기관투자 OR 운용사 OR 데이터센터)',
+    },
+    "Real Estate": {
+        "en": '"real estate" ("pension fund" OR "institutional investor" OR allocation)',
+        "ko": '부동산 투자 (연기금 OR 기관투자 OR 위탁운용 OR 리츠)',
+    },
+    "Hedge Fund/Other": {
+        "en": '"hedge fund" (pension OR institutional OR allocation)',
+        "ko": '헤지펀드 (연기금 OR 기관투자 OR 운용사)',
+    },
+}
+
+# 자산군 뉴스 통과 조건: 기관투자 맥락 키워드 최소 1개 포함 (리테일 노이즈 차단)
+INSTITUTIONAL_CONTEXT_KW = [
+    "pension","연기금","기관투자","institutional","sovereign","endowment","국부펀드",
+    "운용사","자산운용","출자","위탁","약정","billion","조원","억달러","억 달러",
+    "asset manager","fund manager","allocation","commitment","수익률","공제회",
+    "general partner","사모","private equity","direct lending","fundraising",
+]
+
 # ══════════════════════════════════════════════════════════════
 # 2. 헬퍼
 # ══════════════════════════════════════════════════════════════
@@ -525,6 +559,32 @@ def pct_badge(v):
 
 def clean_html(t):
     return re.sub(r"<.*?>","",t) if t else ""
+
+def parse_pubdate(s):
+    """RFC-822 형식 pubDate 문자열 → tz-aware datetime (실패 시 None)"""
+    if not s: return None
+    try:
+        dt = parsedate_to_datetime(s.strip())
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        return None
+
+def is_recent(pubdate_str, days=30):
+    """최근 N일 이내 기사인지. 날짜 파싱 실패 시 통과(True)."""
+    dt = parse_pubdate(pubdate_str)
+    if dt is None: return True
+    return dt >= datetime.now(timezone.utc) - timedelta(days=days)
+
+def fmt_date(pubdate_str):
+    """pubDate → 'YYYY-MM-DD' 표시용"""
+    dt = parse_pubdate(pubdate_str)
+    return dt.strftime("%Y-%m-%d") if dt else (pubdate_str or "")[:16]
+
+def _pub_ts(art):
+    dt = parse_pubdate(art.get("pubDate", ""))
+    return dt.timestamp() if dt else 0.0
 
 def tag_article(title, desc):
     """기관·자산군 자동 태깅"""
@@ -563,7 +623,6 @@ PENSION_EXCLUDE_KW = [
 # ── 해외 공개 RSS 피드 ────────────────────────────────────────
 GLOBAL_RSS_FEEDS = [
     ("Pensions & Investments", "https://www.pionline.com/rss/home"),
-    ("Reuters Business",        "https://feeds.reuters.com/reuters/businessNews"),
     ("IPE (Inst. Investor EU)", "https://www.ipe.com/rss"),
 ]
 
@@ -662,7 +721,127 @@ def fetch_news(keywords):
     except Exception:
         pass
 
+    # ── 최근 30일 필터 + 최신순 정렬 ────────────────────────
+    articles = [a for a in articles if is_recent(a.get("pubDate", ""))]
+    articles.sort(key=_pub_ts, reverse=True)
     return articles
+
+@st.cache_data(ttl=3600)
+def fetch_google_news(query, lang="en", max_items=12):
+    """Google News RSS 검색 (API 키 불필요). lang: 'en' 또는 'ko'"""
+    import xml.etree.ElementTree as ET
+    from urllib.parse import quote
+    if lang == "ko":
+        url = f"https://news.google.com/rss/search?q={quote(query)}&hl=ko&gl=KR&ceid=KR:ko"
+    else:
+        url = f"https://news.google.com/rss/search?q={quote(query)}&hl=en-US&gl=US&ceid=US:en"
+    articles = []
+    try:
+        resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        if resp.status_code != 200:
+            return articles
+        root = ET.fromstring(resp.content)
+        for item in root.findall(".//item")[:max_items]:
+            title  = clean_html((item.findtext("title") or "").strip())
+            desc   = clean_html((item.findtext("description") or "").strip())
+            link   = (item.findtext("link") or "").strip()
+            source = (item.findtext("source") or "Google News").strip()
+            articles.append({
+                "title":       title[:150],
+                "description": desc[:400],
+                "link":        link,
+                "pubDate":     item.findtext("pubDate", ""),
+                "source":      source,
+                "is_global":   lang != "ko",
+            })
+    except Exception:
+        pass
+    return articles
+
+def fetch_asset_news(asset, top_n=5, days=30):
+    """자산군 전용 뉴스: Google News(영문+국문) 검색
+    → 기관투자 맥락 필터 → 관련성 스코어 → 최신순 정렬 상위 top_n"""
+    q = ASSET_NEWS_QUERIES.get(asset)
+    if not q:
+        return []
+    raw = (fetch_google_news(f'{q["en"]} when:{days}d', "en")
+           + fetch_google_news(f'{q["ko"]} when:{days}d', "ko"))
+    kws = ASSET_KEYWORDS.get(asset, [])
+    scored, seen = [], set()
+    for a in raw:
+        key = re.sub(r"\W", "", a["title"].lower())[:40]
+        if not key or key in seen:
+            continue
+        text = (a["title"] + " " + a["description"]).lower()
+        if not is_recent(a["pubDate"], days):
+            continue
+        if any(ex in text for ex in PENSION_EXCLUDE_KW):
+            continue
+        if not any(k.lower() in text for k in INSTITUTIONAL_CONTEXT_KW):
+            continue
+        s = score_news_relevance(a["title"], a["description"], kws)
+        if s >= 3:
+            seen.add(key)
+            scored.append((s, a))
+    scored.sort(key=lambda x: (-x[0], -_pub_ts(x[1])))
+    return [a for _, a in scored[:top_n]]
+
+def score_news_relevance(title, desc, fund_kws, asset_kws=None):
+    """뉴스 관련성 점수 계산 (0~10). 높을수록 핵심 기사."""
+    text = (title + " " + desc).lower()
+    score = 0
+    # 펀드 직접 언급 (핵심)
+    fund_hits = sum(1 for k in fund_kws if k.lower() in text)
+    score += fund_hits * 3
+    # 투자 활동 키워드
+    invest_kws = [
+        "투자","운용","배분","포트폴리오","대체투자","사모","인프라","부동산","펀드",
+        "investment","portfolio","allocation","private equity","infrastructure",
+        "real estate","fund","acquisition","stake","commit","약정","위탁",
+        "직접투자","co-investment","수익률","returns","performance","deal","딜",
+    ]
+    invest_hits = sum(1 for k in invest_kws if k in text)
+    score += min(invest_hits, 4)
+    # 자산군 키워드 (보너스)
+    if asset_kws:
+        score += sum(1 for k in asset_kws if k.lower() in text)
+    # 노이즈 패널티
+    noise_kws = [
+        "주주총회","사외이사","횡령","배임","소송","고려아연","영풍","경영권",
+        "라이다","주가","주식","ipo","상장","스팩","etf 투자설명서",
+    ]
+    noise_hits = sum(1 for k in noise_kws if k in text)
+    score -= noise_hits * 3
+    return max(score, 0)
+
+def fetch_fund_news(fund, top_n=5):
+    """기관별 상세 전용: 관련성 높은 뉴스만 상위 top_n개 반환"""
+    kws = NEWS_KEYWORDS.get(fund, [])
+    asset_kws = []
+    for kw_list in ASSET_KEYWORDS.values():
+        asset_kws.extend(kw_list[:2])
+    # 추가 투자 특화 키워드 조합
+    invest_combos = [f"{kws[0]} 투자", f"{kws[0]} 운용", f"{kws[0]} 대체투자"]
+    all_kws = kws + invest_combos
+    raw = fetch_news(all_kws[:6])
+    # 관련성 점수 계산 및 정렬
+    scored = []
+    for art in raw:
+        s = score_news_relevance(art["title"], art["description"], kws, asset_kws)
+        if s >= 3:  # 최소 점수 3점 이상만 포함
+            scored.append((s, art))
+    scored.sort(key=lambda x: -x[0])
+    # 해외 뉴스 추가
+    try:
+        global_arts = fetch_global_rss(extra_kw=kws)
+        for art in global_arts[:3]:
+            s = score_news_relevance(art["title"], art["description"], kws)
+            if s >= 2:
+                scored.append((s + 1, art))  # 해외 뉴스 보너스
+    except Exception:
+        pass
+    scored.sort(key=lambda x: -x[0])
+    return [art for _, art in scored[:top_n]]
 
 def ai_call(prompt, model="gpt-4o-mini"):
     if not client: return None
@@ -731,7 +910,7 @@ def ai_main_interpretation(matrix_json):
 - 기관 간 전략 차별점과 시사점
 - 한국 기관투자자 관점에서의 구체적 액션 아이템
 
-JSON 형식 (모든 값은 한국어, 2~3문장 분량):
+JSON 형식 (모든 값은 한국어, 2～3문장 분량):
 {{
   "headline": "<글로벌 연기금 대체투자 흐름의 핵심 메시지 2문장. 수치 포함>",
   "pe_signal": "<PE 트렌드: 누가 왜 축소/확대하는지, 한국 기관에 주는 시사점>",
@@ -867,40 +1046,113 @@ def chart_layout(**kwargs):
 # 7. SIDEBAR 네비게이션
 # ══════════════════════════════════════════════════════════════
 
+# ── 세션 초기화 ──────────────────────────────────────────────
+if "nav_fund"   not in st.session_state: st.session_state["nav_fund"]   = None
+if "_page_idx"  not in st.session_state: st.session_state["_page_idx"]  = 0
+
+PAGE_OPTIONS = [
+    "🏠 Radar 메인",
+    "🏦 기관별 상세",
+    "📊 자산군별 비교",
+    "📰 News · Issues · Deals",
+    "📁 Data Room",
+]
+
+# 순위표 기금 데이터 (★ = 분석 대상)
+RANKING_DATA = [
+    (1,  "🇳🇴", "Norway GPFG",  1700, "국부펀드",  None),
+    (2,  "🇯🇵", "Japan GPIF",   1500, "공적연금",  None),
+    (3,  "🇰🇷", "국민연금(NPS)",  880, "공적연금",  "국민연금(NPS)"),
+    (4,  "🇸🇬", "GIC",           770, "국부펀드",  None),
+    (5,  "🇳🇱", "ABP",           630, "직역연금",  None),
+    (6,  "🇺🇸", "CalPERS",       635, "공적연금",  "CalPERS"),
+    (7,  "🇨🇦", "CPPIB",         587, "공적연금",  "CPPIB"),
+    (8,  "🇳🇱", "PFZW",          320, "직역연금",  None),
+    (9,  "🇨🇦", "PSP",           222, "공적연금",  "PSP Investments"),
+    (10, "🇨🇦", "OTPP",          207, "직역연금",  "OTPP"),
+]
+
 with st.sidebar:
     st.markdown("## 📡 Pension Alt Radar")
     st.markdown("---")
-    page = st.radio("", [
-        "🏠 Radar 메인",
-        "🏦 기관별 상세",
-        "📊 자산군별 비교",
-        "📰 News · Issues · Deals",
-        "📁 Data Room",
-    ], label_visibility="collapsed")
+    # index= 방식으로 session_state 충돌 없이 페이지 전환
+    page = st.radio("", PAGE_OPTIONS,
+                    index=st.session_state["_page_idx"],
+                    label_visibility="collapsed")
+    # radio가 클릭되면 _page_idx 동기화
+    st.session_state["_page_idx"] = PAGE_OPTIONS.index(page)
+
     st.markdown("---")
-    st.caption("🌐 글로벌 연기금 규모 순위")
-    ranking_html = """
-<table style='width:100%;border-collapse:collapse;font-size:11px;color:#cbd5e1'>
-<tr style='background:#1a2535;color:#90caf9'>
-  <th style='padding:4px 6px;text-align:center'>#</th>
-  <th style='padding:4px 6px;text-align:left'>기금명</th>
-  <th style='padding:4px 6px;text-align:right'>AUM(B$)</th>
-  <th style='padding:4px 6px;text-align:center'>분류</th>
-</tr>
-<tr style='background:#0d1117'><td style='padding:3px 6px;text-align:center'>1</td><td>🇳🇴 Norway GPFG</td><td style='text-align:right'>1,700</td><td style='text-align:center;color:#aab8c8'>국부펀드</td></tr>
-<tr style='background:#111827'><td style='padding:3px 6px;text-align:center'>2</td><td>🇯🇵 Japan GPIF</td><td style='text-align:right'>1,500</td><td style='text-align:center;color:#aab8c8'>공적연금</td></tr>
-<tr style='background:#0d1117;border-left:3px solid #3b82f6'><td style='padding:3px 6px;text-align:center'>3</td><td><b style='color:#f8fafc'>🇰🇷 국민연금 ★</b></td><td style='text-align:right'><b>880</b></td><td style='text-align:center;color:#90caf9'>공적연금</td></tr>
-<tr style='background:#111827'><td style='padding:3px 6px;text-align:center'>4</td><td>🇸🇬 GIC</td><td style='text-align:right'>770</td><td style='text-align:center;color:#aab8c8'>국부펀드</td></tr>
-<tr style='background:#0d1117'><td style='padding:3px 6px;text-align:center'>5</td><td>🇳🇱 ABP</td><td style='text-align:right'>630</td><td style='text-align:center;color:#aab8c8'>직역연금</td></tr>
-<tr style='background:#111827;border-left:3px solid #3b82f6'><td style='padding:3px 6px;text-align:center'>6</td><td><b style='color:#f8fafc'>🇺🇸 CalPERS ★</b></td><td style='text-align:right'><b>635</b></td><td style='text-align:center;color:#90caf9'>공적연금</td></tr>
-<tr style='background:#0d1117;border-left:3px solid #3b82f6'><td style='padding:3px 6px;text-align:center'>7</td><td><b style='color:#f8fafc'>🇨🇦 CPPIB ★</b></td><td style='text-align:right'><b>587</b></td><td style='text-align:center;color:#90caf9'>공적연금</td></tr>
-<tr style='background:#111827'><td style='padding:3px 6px;text-align:center'>8</td><td>🇳🇱 PFZW</td><td style='text-align:right'>320</td><td style='text-align:center;color:#aab8c8'>직역연금</td></tr>
-<tr style='background:#0d1117;border-left:3px solid #3b82f6'><td style='padding:3px 6px;text-align:center'>9</td><td><b style='color:#f8fafc'>🇨🇦 PSP ★</b></td><td style='text-align:right'><b>222</b></td><td style='text-align:center;color:#90caf9'>공적연금</td></tr>
-<tr style='background:#111827;border-left:3px solid #3b82f6'><td style='padding:3px 6px;text-align:center'>10</td><td><b style='color:#f8fafc'>🇨🇦 OTPP ★</b></td><td style='text-align:right'><b>207</b></td><td style='text-align:center;color:#90caf9'>직역연금</td></tr>
-</table>
-<p style='font-size:10px;color:#4a5568;margin-top:4px'>★ 본 분석 대상 | 2024~2025 연차보고서 기준</p>
-"""
-    st.markdown(ranking_html, unsafe_allow_html=True)
+    st.caption("🌐 글로벌 연기금 규모 순위 (★ 클릭 → 기관 상세)")
+
+    # ── 순위표: 비분석 기관은 HTML, ★ 분석 기관은 버튼 ────────────
+    # 버튼을 테이블처럼 보이게 하는 CSS
+    st.markdown("""<style>
+[data-testid="stSidebar"] .rank-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:3px 6px; font-size:11px; color:#cbd5e1;
+    border-bottom:1px solid #1e2535;
+}
+[data-testid="stSidebar"] .rank-star button {
+    background:#1a2a40 !important;
+    border:none !important;
+    border-left:3px solid #3b82f6 !important;
+    border-radius:0 !important;
+    color:#93c5fd !important;
+    font-size:11px !important;
+    font-weight:700 !important;
+    padding:3px 6px !important;
+    text-align:left !important;
+    width:100% !important;
+    margin:0 !important;
+    cursor:pointer !important;
+}
+[data-testid="stSidebar"] .rank-star button:hover {
+    background:#1e3a5f !important;
+    color:#bfdbfe !important;
+}
+</style>""", unsafe_allow_html=True)
+
+    # 헤더
+    st.markdown(
+        "<div class='rank-row' style='background:#1a2535;color:#90caf9;font-weight:700'>"
+        "<span style='width:20px'>#</span>"
+        "<span style='flex:1'>기금명</span>"
+        "<span style='width:52px;text-align:right'>AUM(B$)</span>"
+        "<span style='width:42px;text-align:center'>분류</span>"
+        "</div>",
+        unsafe_allow_html=True
+    )
+
+    for rank, flag, name, aum, cat, fund_key in RANKING_DATA:
+        bg = "#0d1117" if rank % 2 == 1 else "#111827"
+        if fund_key:  # ★ 분석 대상 → 버튼
+            with st.container():
+                st.markdown(f"<div class='rank-star'>", unsafe_allow_html=True)
+                if st.button(
+                    f"{rank}  {flag} {name} ★  {aum}B$",
+                    key=f"rank_nav_{fund_key}",
+                    use_container_width=True,
+                ):
+                    st.session_state["_page_idx"] = 1   # 기관별 상세
+                    st.session_state["nav_fund"]  = fund_key
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
+        else:  # 비분석 기관 → 텍스트
+            st.markdown(
+                f"<div class='rank-row' style='background:{bg}'>"
+                f"<span style='width:20px;color:#64748b'>{rank}</span>"
+                f"<span style='flex:1'>{flag} {name}</span>"
+                f"<span style='width:52px;text-align:right;color:#94a3b8'>{aum}</span>"
+                f"<span style='width:42px;text-align:center;color:#64748b;font-size:10px'>{cat}</span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
+    st.markdown(
+        "<p style='font-size:10px;color:#4a5568;margin:4px 6px'>★ 클릭 시 기관별 상세로 이동 | 2024～2025 연차보고서 기준</p>",
+        unsafe_allow_html=True
+    )
 
 # ══════════════════════════════════════════════════════════════
 # PAGE 1: RADAR 메인
@@ -1022,7 +1274,7 @@ if page == "🏠 Radar 메인":
             col2   = "#0f172a" if ci2 == 0 else "#475569"
             size   = "12.5px" if ci2 == 0 else "11.5px"
             char_html += f"<p style='margin:0 0 5px;font-size:{size};font-weight:{weight};color:{col2};line-height:1.6'>{sent}.</p>"
-        mx += f"<td style='padding:10px 16px;vertical-align:top;width:300px;min-width:260px;max-width:340px'>{char_html}</td>"
+        mx += f"<td style='padding:10px 16px;vertical-align:top;min-width:260px;word-break:keep-all;word-wrap:break-word'>{char_html}</td>"
         mx += "</tr>"
 
     mx += "</tbody></table>"
@@ -1078,10 +1330,22 @@ if page == "🏠 Radar 메인":
         "Real Estate":      "#f59e0b",
         "Hedge Fund/Other": "#6366f1",
     }
+    # 자산군 전용 검색(Google News 영문+국문) — 1시간 캐시
+    with st.spinner("자산군별 최신 뉴스 수집 중..."):
+        asset_news_map = {ac: fetch_asset_news(ac, top_n=5) for ac in ALT_CLASSES}
+
     for ac in ALT_CLASSES:
         ov      = ASSET_OVERVIEW.get(ac, {})
-        ac_arts = [a for a in tagged_all if ac in a.get("asset_tags", [])]
-        n_ac    = len({a["title"] for a in ac_arts})
+        # 전용 검색 결과 + 기관명 검색 결과 중 해당 자산군 태그 기사 병합
+        ac_arts = list(asset_news_map.get(ac, []))
+        seen_t  = {re.sub(r"\W", "", a["title"].lower())[:40] for a in ac_arts}
+        for a in tagged_all:
+            if ac in a.get("asset_tags", []):
+                k = re.sub(r"\W", "", a["title"].lower())[:40]
+                if k not in seen_t:
+                    seen_t.add(k)
+                    ac_arts.append(a)
+        n_ac    = len(ac_arts)
         top_c   = ac_colors.get(ac, "#3b82f6")
         # 관련 기관 (현재 비중 상위 3개)
         ac_funds = sorted(FUNDS, key=lambda f: ALLOC[f].get(ac,(0,0))[0] or 0, reverse=True)[:3]
@@ -1114,16 +1378,20 @@ if page == "🏠 Radar 메인":
                 f"</div>",
                 unsafe_allow_html=True
             )
-            # 관련 뉴스 (있는 경우)
+            # 관련 뉴스
             if ac_arts:
                 st.markdown("**관련 뉴스**")
-                for art in ac_arts[:3]:
-                    src_badge = f"[{art.get('source','Naver')}]" if art.get('is_global') else ""
+                for art in ac_arts[:5]:
+                    src = art.get("source", "")
+                    src_badge = (f"<span style='background:#e2e8f0;color:#475569;font-size:10px;"
+                                 f"padding:1px 6px;border-radius:8px'>{src}</span> ") if src else ""
                     st.markdown(
-                        f"• {src_badge} [{art['title'][:80]}]({art.get('link','#')})  "
-                        f"<span style='font-size:11px;color:#94a3b8'>{art.get('pubDate','')[:16]}</span>",
+                        f"• {src_badge}[{art['title'][:90]}]({art.get('link','#')})  "
+                        f"<span style='font-size:11px;color:#94a3b8'>{fmt_date(art.get('pubDate',''))}</span>",
                         unsafe_allow_html=True
                     )
+            else:
+                st.caption("최근 30일 내 관련 기사 없음")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -1133,10 +1401,18 @@ if page == "🏠 Radar 메인":
 elif page == "🏦 기관별 상세":
     st.title("🏦 기관별 상세")
 
-    fund_tabs = st.tabs(FUNDS)
+    # nav_fund가 설정된 경우 해당 기관을 첫 번째 탭으로 이동 (→ 자동 활성화)
+    nav_fund = st.session_state.get("nav_fund")
+    if nav_fund and nav_fund in FUNDS:
+        ordered_funds = [nav_fund] + [f for f in FUNDS if f != nav_fund]
+        st.session_state["nav_fund"] = None  # 소비 후 초기화
+    else:
+        ordered_funds = FUNDS
+
+    fund_tabs = st.tabs(ordered_funds)
 
     for tab_idx, tab in enumerate(fund_tabs):
-        fund = FUNDS[tab_idx]
+        fund = ordered_funds[tab_idx]
         meta   = FUND_META[fund]
         alloc  = ALLOC[fund]
         ret_ts = RETURNS_TS[fund]
@@ -1476,6 +1752,14 @@ elif page == "🏦 기관별 상세":
                 )
                 fig_ret.add_hline(y=0, line_color="#94a3b8", line_width=1)
                 st.plotly_chart(fig_ret, use_container_width=True, key=f"ret_{fund}")
+                bm_note = {
+                    "국민연금(NPS)":   "📌 BM 출처: 금융부문 TWR 기준 (보건복지부·NPS 연차보고서 공시)",
+                    "CPPIB":           "📌 BM: 연차보고서 미공시 (부가가치 누적 VA만 공시) — 그래프에서 BM 라인 생략",
+                    "CalPERS":         "📌 BM 출처: Policy Portfolio 기준 (FY2022·FY2023·FY2025만 공시, 나머지 연도 생략)",
+                    "OTPP":            "📌 BM 출처: Reference Portfolio 기준 (OTPP 연차보고서, 레버리지 포함 이펙티브 믹스 BM)",
+                    "PSP Investments": "📌 BM 출처: Reference Portfolio 기준 (PSP 연차보고서, FY2021～FY2025 전 기간 공시)",
+                }
+                st.caption(bm_note.get(fund, ""))
 
             with c4:
                 # 성과 지표 + 분석 멘트
@@ -1587,16 +1871,26 @@ elif page == "🏦 기관별 상세":
                 st.markdown(f"**성과 코멘트:** {ai_fd.get('performance_comment','')}")
                 st.markdown(f"**향후 전망:** {ai_fd.get('outlook','')}")
 
-            # 관련 뉴스
+            # 관련 뉴스 (관련성 점수 필터링)
             st.divider()
             st.markdown("##### 📰 관련 뉴스")
-            kws = NEWS_KEYWORDS.get(fund,[])
+            st.caption("투자·운용 활동 관련 기사만 선별 표시 (관련성 낮은 기사 자동 제외)")
             with st.spinner("뉴스 수집 중..."):
-                arts = fetch_news(kws[:2])
-            for a in arts[:5]:
-                with st.expander(a["title"]):
+                arts = fetch_fund_news(fund, top_n=6)
+            if not arts:
+                st.info("관련성 높은 뉴스가 없습니다. (네이버 API 키 설정 또는 해외 RSS 연결 확인)")
+            for a in arts:
+                src_badge = f"🌐 [{a.get('source','')}]" if a.get("is_global") else "📰"
+                risk_lv   = risk_level(a["title"], a["description"])
+                risk_col  = "#b91c1c" if "High" in risk_lv else ("#b45309" if "Medium" in risk_lv else "#15803d")
+                with st.expander(f"{src_badge} {a['title'][:85]}"):
+                    st.markdown(
+                        f"<span style='font-size:11px;color:{risk_col};font-weight:600'>{risk_lv}</span>"
+                        f"&nbsp;|&nbsp;<span style='font-size:11px;color:#64748b'>{a.get('pubDate','')[:16]}</span>",
+                        unsafe_allow_html=True
+                    )
                     st.write(a["description"])
-                    if a["link"]: st.markdown(f"[원문]({a['link']})")
+                    if a.get("link"): st.markdown(f"[원문 보기]({a['link']})")
 
 # ══════════════════════════════════════════════════════════════
 # PAGE 3: 자산군별 비교
@@ -1667,7 +1961,6 @@ elif page == "📊 자산군별 비교":
                             "비중(%)": cur,
                             "전기(%)": pre,
                             "증감(pp)": delta,
-                            "기관 특징": FUND_CHARACTERISTIC.get(fund,""),
                         })
 
                     df_yr = pd.DataFrame(yr_rows)
@@ -1686,7 +1979,7 @@ elif page == "📊 자산군별 비교":
                            f"<th style='padding:8px 10px;color:#1d4ed8;text-align:right'>{sel_yr}년 비중</th>"
                            "<th style='padding:8px 10px;color:#64748b;text-align:right'>전기 비중</th>"
                            "<th style='padding:8px 10px;color:#64748b;text-align:right'>증감</th>"
-                           "<th style='padding:8px 10px;color:#475569;text-align:left'>기관 특징</th>"
+                           ""
                            "</tr></thead><tbody>")
 
                     for _, row in df_yr_v.iterrows():
@@ -1705,7 +1998,7 @@ elif page == "📊 자산군별 비교":
                                 f"<td style='padding:8px 10px;text-align:right;font-size:15px;font-weight:700;color:#1d4ed8'>{row['비중(%)']:.1f}%</td>"
                                 f"<td style='padding:8px 10px;text-align:right;color:#64748b'>{pre_str}</td>"
                                 f"<td style='padding:8px 10px;text-align:right;font-weight:600;color:{d_col}'>{d_str}</td>"
-                                f"<td style='padding:8px 10px;font-size:11px;color:#475569;line-height:1.6'>{row['기관 특징'].split('.')[0].strip()}.</td>"
+                                ""
                                 f"</tr>")
                     tbl += "</tbody></table>"
                     st.markdown(tbl, unsafe_allow_html=True)
@@ -1799,17 +2092,19 @@ elif page == "📊 자산군별 비교":
             c3, c4 = st.columns([1, 1])
             with c3:
                 st.markdown("##### 자산군 특징")
-                st.info(ASSET_SUMMARY.get(asset, ""))
+                st.markdown(f"<div style='background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:12px 16px;font-size:13px;color:#1e293b;line-height:1.75'>{ASSET_SUMMARY.get(asset,'').replace(chr(126),'～')}</div>", unsafe_allow_html=True)
             with c4:
                 st.markdown("##### 기관별 현재 전략 방향")
                 for fund in FUNDS:
                     cur_v, pre_v = ALLOC[fund].get(asset,(None,None))
                     d = (cur_v - pre_v) if cur_v and pre_v else 0
                     direction = "📈 확대" if d > 0.5 else ("📉 축소" if d < -0.5 else "➡ 유지")
-                    char = FUND_CHARACTERISTIC.get(fund,"")[:50]
+                    char_full = FUND_CHARACTERISTIC.get(fund, "")
+                    char_s1 = char_full.split(". ")[0] if char_full else ""
                     st.markdown(
-                        f"**{fund}**: {pct_badge(cur_v)} {direction}  "
-                        f"<span style='font-size:11px;color:#64748b'>— {char}</span>",
+                        f"<div style='padding:5px 0;border-bottom:1px solid #f1f5f9'>"
+                        f"<b>{fund}</b>: {pct_badge(cur_v)} {direction}"
+                        f"<br><span style='font-size:11.5px;color:#475569;line-height:1.6'>{char_s1}.</span></div>",
                         unsafe_allow_html=True
                     )
 
