@@ -439,6 +439,41 @@ ASSET_OVERVIEW = {
     },
 }
 
+# ── 기관별 비(非)실적 최근 이슈 (의사결정·이벤트 중심) ────────────
+RECENT_NOTABLE_ISSUES = {
+    "국민연금(NPS)": (
+        "최근 주식시장 강세로 공모주식 비중이 47.1%까지 확대되면서, "
+        "비중 상한 초과를 방지하기 위한 자동 리밸런싱 매도 압력이 발생 중. "
+        "2026년 해외 PE·인프라 위탁운용사 추가 선정 공고를 준비 중이며, "
+        "사모대출(PC) 전용 운용사 선정도 처음으로 추진할 예정. "
+        "국내주식 부진(-7.0%) 대응 차원에서 해외주식 비중 추가 확대 방안 검토 중."
+    ),
+    "CPPIB": (
+        "FY2026 Active Equities 전략에서 -$3.5B 손실이 확인되어 이사회 차원의 전략 재검토 착수. "
+        "부동산·인프라·에너지를 'Real Assets'로 통합하는 분류체계 전면 개편을 FY2026부터 적용. "
+        "PE 비중을 22%까지 낮춘 이후 추가 축소 여부와 공모주식(36%) 확대 기조 지속 여부가 핵심 관전 포인트. "
+        "지속가능에너지 인프라 신설 카테고리에 대한 투자 확대 지속."
+    ),
+    "CalPERS": (
+        "이사회에서 PE 목표 비중을 현행 17%에서 추가 상향하는 방안 공식 논의 시작. "
+        "Private Debt를 독립 자산군으로 분리하고 비중을 단계적으로 확대하는 로드맵 수립 중. "
+        "캘리포니아 주요 도시 오피스 부동산 손실 인식이 마무리 단계에 접어들며 "
+        "물류·주거형 부동산으로의 전환 계획 구체화."
+    ),
+    "OTPP": (
+        "2025년 PE 포트폴리오 -5.3% 부진으로 주요 GP에 대한 재선별 작업 착수. "
+        "Venture Growth 카테고리가 신설 첫 해 +30.2%를 기록하며 비중 추가 확대 여부 검토 중. "
+        "벤치마크 대비 -5.0%p 언더퍼폼이 문제화되어 이사회에서 운용 전략 전반에 대한 검토 요구. "
+        "인프라 차익 실현(17%→13%) 이후 재투자 대상 선정 작업 진행 중."
+    ),
+    "PSP Investments": (
+        "오피스 부동산 손실 인식 완료를 공식 선언하며 포트폴리오 안정화 단계 진입. "
+        "공모주식(자본시장)을 26.6%로 역대 최고 수준으로 확대한 이후 추가 확대 여력 검토 중. "
+        "Private Credit 10.1% 수준을 유지하며 직접대출 역량 고도화 및 거래 발굴 조직 강화. "
+        "인프라 비중 축소(13%→10.7%) 후 재생에너지·디지털 인프라 중심으로 재투자 전략 수립."
+    ),
+}
+
 # ── 기관별 특징 요약 ──────────────────────────────────────────
 FUND_CHARACTERISTIC = {
     "국민연금(NPS)": (
@@ -1341,15 +1376,11 @@ if page == "🏠 Radar 메인":
                f"<b style='font-size:15px;color:#1d4ed8'>{alt_sum:.1f}%</b><br>"
                f"<span style='font-size:10px;color:{alt_col}'>{alt_arr}</span></td>")
         # 기관 특징
-        # 기관 특징 - 첫 문장 굵게(두괄식), 이후 2문장 일반
+        # 기관 특징 - 첫 문장(굵은 글씨)만 표시
         char_sentences = [s.strip() for s in char.replace('. ', '.|').split('|') if s.strip() and len(s.strip()) > 5]
-        char_html = ""
-        for ci2, sent in enumerate(char_sentences[:3]):
-            weight = "700" if ci2 == 0 else "400"
-            col2   = "#0f172a" if ci2 == 0 else "#475569"
-            size   = "12.5px" if ci2 == 0 else "11.5px"
-            char_html += f"<p style='margin:0 0 5px;font-size:{size};font-weight:{weight};color:{col2};line-height:1.6'>{sent}.</p>"
-        mx += f"<td style='padding:10px 16px;vertical-align:top;min-width:260px;word-break:keep-all;word-wrap:break-word'>{char_html}</td>"
+        first_sent = char_sentences[0].rstrip('.') if char_sentences else char.rstrip('.')
+        char_html = f"<p style='margin:0;font-size:12.5px;font-weight:700;color:#0f172a;line-height:1.6'>{first_sent}.</p>"
+        mx += f"<td style='padding:10px 16px;vertical-align:top;min-width:240px;max-width:320px;word-break:keep-all;word-wrap:break-word'>{char_html}</td>"
         mx += "</tr>"
 
     mx += "</tbody></table>"
@@ -1386,18 +1417,20 @@ if page == "🏠 Radar 메인":
     for fund in FUNDS:
         fund_arts = [a for a in tagged_all if fund in a.get("fund_tags",[])]
         n_dedup   = len({a["title"] for a in fund_arts})
+        notable = RECENT_NOTABLE_ISSUES.get(fund, "–")
         issue_rows.append({
             "기관": fund,
             "직접 뉴스(건)": n_dedup,
-            "최근 이슈 요약": RECENT_ISSUES.get(fund,"–")[:80]+"…" if len(RECENT_ISSUES.get(fund,""))>80 else RECENT_ISSUES.get(fund,"–"),
+            "최근 이슈 요약": notable[:100]+"…" if len(notable)>100 else notable,
             "시그널": INST_SIGNAL.get(fund,"").split("—")[0].strip() if INST_SIGNAL.get(fund) else "–",
         })
     df_issues = pd.DataFrame(issue_rows)
     st.dataframe(df_issues, use_container_width=True, hide_index=True)
 
-    # ── 대체투자 자산군 이슈 ─────────────────────────────────
+    # ── 대체투자 자산군 이슈 (간략 요약 표) ─────────────────────
     st.divider()
     st.subheader("📌 대체투자 자산군 이슈")
+    st.caption("자세한 내용 및 관련 뉴스는 '📊 자산군별 비교' 탭에서 확인하세요.")
     ac_colors = {
         "Private Equity":   "#3b82f6",
         "Private Credit":   "#8b5cf6",
@@ -1405,56 +1438,40 @@ if page == "🏠 Radar 메인":
         "Real Estate":      "#f59e0b",
         "Hedge Fund/Other": "#6366f1",
     }
-    for ac in ALT_CLASSES:
-        ov      = ASSET_OVERVIEW.get(ac, {})
-        ac_arts = asset_arts_map.get(ac, [])
-        n_ac    = len(ac_arts)
-        top_c   = ac_colors.get(ac, "#3b82f6")
-        # 관련 기관 (현재 비중 상위 3개)
+
+    ac_tbl = "<table style='width:100%;border-collapse:collapse;font-size:13px'>"
+    ac_tbl += ("<thead><tr style='background:#1e293b'>"
+               "<th style='padding:9px 12px;text-align:left;color:#93c5fd;width:150px'>자산군</th>"
+               "<th style='padding:9px 8px;text-align:center;color:#93c5fd;width:80px'>관련 뉴스</th>"
+               "<th style='padding:9px 12px;text-align:left;color:#93c5fd'>최근 이슈 요약</th>"
+               "<th style='padding:9px 12px;text-align:left;color:#93c5fd;width:180px'>주요 투자 기관</th>"
+               "</tr></thead><tbody>")
+
+    for i, ac in enumerate(ALT_CLASSES):
+        ov       = ASSET_OVERVIEW.get(ac, {})
+        ac_arts  = asset_arts_map.get(ac, [])
+        n_ac     = len(ac_arts)
+        top_c    = ac_colors.get(ac, "#3b82f6")
         ac_funds = sorted(FUNDS, key=lambda f: ALLOC[f].get(ac,(0,0))[0] or 0, reverse=True)[:3]
-        fund_tags = " ".join(
+        fund_badges = " ".join(
             f"<span style='background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:600;"
-            f"padding:1px 6px;border-radius:8px;margin-right:3px'>{f}</span>"
+            f"padding:1px 5px;border-radius:6px;white-space:nowrap'>{f.split('(')[0].strip()}</span>"
             for f in ac_funds
         )
-        with st.expander(f"**{ac}** — 관련 뉴스 {n_ac}건", expanded=True):
-            st.markdown(
-                f"<div style='border-left:4px solid {top_c};padding:0 0 0 14px'>"
-                f"<p style='font-size:13px;color:#334155;line-height:1.75;margin:0 0 10px'>"
-                f"<b style='color:#0f172a'>개요:</b> {ov.get('overview','')}</p>"
-                f"<div style='display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px'>"
-                f"<div style='flex:1;min-width:200px'>"
-                f"<p style='font-size:11px;font-weight:700;color:#15803d;margin:0 0 3px'>✅ 투자 매력</p>"
-                f"<p style='font-size:12px;color:#1e293b;line-height:1.65;margin:0'>{ov.get('attraction','')}</p>"
-                f"</div>"
-                f"<div style='flex:1;min-width:200px'>"
-                f"<p style='font-size:11px;font-weight:700;color:#b91c1c;margin:0 0 3px'>⚠️ 주요 리스크</p>"
-                f"<p style='font-size:12px;color:#1e293b;line-height:1.65;margin:0'>{ov.get('risk','')}</p>"
-                f"</div>"
-                f"</div>"
-                f"<div style='background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 6px 6px 0;"
-                f"padding:8px 12px;margin-bottom:10px'>"
-                f"<p style='font-size:11px;font-weight:700;color:#b45309;margin:0 0 3px'>🔔 최근 이슈</p>"
-                f"<p style='font-size:12px;color:#1e293b;line-height:1.65;margin:0'>{ov.get('recent','')}</p>"
-                f"</div>"
-                f"<p style='font-size:11px;color:#64748b;margin:0'>주요 투자 기관: {fund_tags}</p>"
-                f"</div>",
-                unsafe_allow_html=True
-            )
-            # 관련 뉴스
-            if ac_arts:
-                st.markdown("**관련 뉴스**")
-                for art in ac_arts[:5]:
-                    src = art.get("source", "")
-                    src_badge = (f"<span style='background:#e2e8f0;color:#475569;font-size:10px;"
-                                 f"padding:1px 6px;border-radius:8px'>{src}</span> ") if src else ""
-                    st.markdown(
-                        f"• {src_badge}[{art['title'][:90]}]({art.get('link','#')})  "
-                        f"<span style='font-size:11px;color:#94a3b8'>{fmt_date(art.get('pubDate',''))}</span>",
-                        unsafe_allow_html=True
-                    )
-            else:
-                st.caption("최근 30일 내 관련 기사 없음")
+        recent_text = ov.get('recent', '')
+        recent_short = recent_text[:110] + ('…' if len(recent_text) > 110 else '')
+        bg = "#f8fafc" if i % 2 == 0 else "#ffffff"
+        ac_tbl += (
+            f"<tr style='background:{bg};border-bottom:1px solid #e2e8f0'>"
+            f"<td style='padding:10px 12px;font-weight:700;color:{top_c};white-space:nowrap'>{ac}</td>"
+            f"<td style='padding:10px 8px;text-align:center;font-size:15px;font-weight:800;color:#1d4ed8'>{n_ac}</td>"
+            f"<td style='padding:10px 12px;font-size:12px;color:#334155;line-height:1.65'>{recent_short}</td>"
+            f"<td style='padding:10px 12px'>{fund_badges}</td>"
+            f"</tr>"
+        )
+
+    ac_tbl += "</tbody></table>"
+    st.markdown(ac_tbl, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -2199,6 +2216,31 @@ elif page == "📊 자산군별 비교":
                 st.markdown(f"**트렌드:** {ai_ar.get('trend','')}")
                 st.success(f"🎯 **기회:** {ai_ar.get('opportunity','')}")
                 st.warning(f"⚠️ **주의:** {ai_ar.get('caution','')}")
+
+            # ── (6) 자산군 관련 최신 뉴스 ──────────────────────────
+            st.divider()
+            top_c_p3 = {"Private Equity":"#3b82f6","Private Credit":"#8b5cf6",
+                        "Infrastructure":"#10b981","Real Estate":"#f59e0b",
+                        "Hedge Fund/Other":"#6366f1"}.get(asset, "#3b82f6")
+            st.markdown(
+                f"<p style='font-size:15px;font-weight:700;color:{top_c_p3};margin:0 0 10px'>"
+                f"📰 {asset} 관련 최신 뉴스</p>",
+                unsafe_allow_html=True
+            )
+            with st.spinner(f"{asset} 관련 뉴스 수집 중..."):
+                ac_arts_p3 = fetch_asset_news(asset)
+            if ac_arts_p3:
+                for art in ac_arts_p3[:5]:
+                    src = art.get("source", "")
+                    src_badge = (f"<span style='background:#e2e8f0;color:#475569;font-size:10px;"
+                                 f"padding:1px 6px;border-radius:8px'>{src}</span> ") if src else ""
+                    st.markdown(
+                        f"• {src_badge}[{art['title'][:90]}]({art.get('link','#')})  "
+                        f"<span style='font-size:11px;color:#94a3b8'>{fmt_date(art.get('pubDate',''))}</span>",
+                        unsafe_allow_html=True
+                    )
+            else:
+                st.caption("최근 30일 내 관련 기사 없음")
 
 # ══════════════════════════════════════════════════════════════
 # PAGE 4: News · Issues · Deals
